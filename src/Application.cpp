@@ -95,17 +95,17 @@ Application::Application(int width, int height) : m_window(width, height),
     std::filesystem::path path{"../Resources/"};
     auto shader_filenames = extractNamesInDirectory(path, ".frag");
 
-    auto &unit_layer = m_layers.addLayer("Unit", 5);
+    auto &unit_layer = m_layers.addLayer("Unit", 10);
     unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     auto &smoke_layer = m_layers.addLayer("Smoke", 4);
     smoke_layer .addEffect(std::make_unique<BloomSmoke>(width, height));
-    auto &fire_layer = m_layers.addLayer("Fire", 2);
+    auto &fire_layer = m_layers.addLayer("Fire", 6);
     fire_layer.addEffect(std::make_unique<Bloom2>(width, height));
     auto &wall_layer = m_layers.addLayer("Wall", 0);
     wall_layer.addEffect(std::make_unique<Bloom2>(width, height));
-    // auto &edge_detect = m_layers.addLayer("Light", 0);
-    // edge_detect.addEffect(std::make_unique<LightCombine>(width, height));
+    auto &edge_detect = m_layers.addLayer("Light", 150);
+    edge_detect.addEffect(std::make_unique<LightCombine>(width, height));
     auto &water_layer = m_layers.addLayer("Water", 3);
     // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
     //
@@ -131,7 +131,7 @@ Application::Application(int width, int height) : m_window(width, height),
 
     m_water = std::make_shared<Water>(m_window_renderer.getShaders(), m_layers);
     m_enviroment.push_back(m_water);
-    // m_enviroment.push_back(std::make_unique<FireEffect>());
+    m_enviroment.push_back(std::make_unique<FireEffect>());
     auto texture_filenames = extractNamesInDirectory(path, ".png");
     for (auto &texture_filename : texture_filenames)
     {
@@ -411,12 +411,11 @@ void Application::update(float dt = 0.016f)
     {
         effect->draw(m_layers, m_window_renderer.m_view);
     }
-    m_window.clear({0, 0, 0, 1});
     drawTriangles(m_cdt, wall_canvas, m_ui->getBackgroundColor());
     world.draw(m_layers);
-    // auto& light_canvas = m_layers.getCanvas("Light");
-    // light_canvas.m_view = m_window_renderer.m_view;
-    // light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f/180.f*3.145f, 80, 100, {1,1,1,0.5});
+    auto& light_canvas = m_layers.getCanvas("Light");
+    light_canvas.m_view = m_window_renderer.m_view;
+    light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f/180.f*3.145f, 50, 100, m_ui->getLightColor());
 
     // // // clear and draw into scene
     m_scene_canvas.clear({0, 0, 0, 1});
@@ -425,21 +424,10 @@ void Application::update(float dt = 0.016f)
     auto &vars2 = m_window_renderer.getShader("Shiny").getVariables();
     vars2.uniforms.at("u_time") = m_time;
 
-    // m_window_renderer.drawCricleBatched({10.*m_time, 400.f}, 20, {1, 1,0,1});
-    // m_window_renderer.drawCricleBatched({20.*m_time, 400.f}, 20, {1, 0,0,1});
-    // drawAgent(mouse_coords, 10, m_layers, m_ui->getParticleEndColor());
-    // // // Sprite2 background(*m_textures.get("TestImage"));
-    // // // background.setPosition(m_scene_canvas.getTargetSize()/2.f);
-    // // // background.setScale(m_scene_canvas.getTargetSize()/2.f);
-    // // // m_scene_canvas.drawSprite(background, "Instanced", GL_DYNAMIC_DRAW);
-    // m_scene_canvas.drawAll();
-    Sprite2 test_sprite(*m_textures.get("coin"));
-    test_sprite.setScale(utils::Vector2f{200., 150.});
-    test_sprite.setPosition(utils::Vector2f{400., 300.});
-    // unit_canvas.drawSprite(test_sprite, "Shiny", GL_DYNAMIC_DRAW);
+
     m_layers.draw(m_scene_canvas);
     //! draw everything to a window quad
-    // m_window.clear({0, 0, 0, 0});
+    m_window.clear({0, 0, 0, 0});
     auto old_view = m_window_renderer.m_view;
     Sprite2 screen_sprite(m_scene_pixels.getTexture());
     auto scene_size = m_scene_pixels.getSize();
@@ -450,7 +438,11 @@ void Application::update(float dt = 0.016f)
     m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
     m_window_renderer.drawAll();
 
-    m_window_renderer.drawAll();
+    // Sprite2 test_sprite(*m_textures.get("coin"));
+    // test_sprite.setScale(utils::Vector2f{200., 150.});
+    // test_sprite.setPosition(utils::Vector2f{400., 300.});
+    // m_window_renderer.drawSprite(test_sprite, "Shiny", GL_DYNAMIC_DRAW);
+    // m_window_renderer.drawAll();
 
     m_window_renderer.m_view = old_view;
 

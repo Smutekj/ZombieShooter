@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
 
-
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 project(project-web)
 else()
 project(projectx)
 endif()
-
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
@@ -38,13 +36,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(lua)
 
-# FetchContent_Declare(
-#   flecs
-#   GIT_REPOSITORY https://github.com/SanderMertens/flecs
-#   GIT_TAG master 
-# )
-# FetchContent_MakeAvailable(flecs)
-
 
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 set(USE_FLAGS "-std=c++20 -s USE_SDL=2 -s USE_FREETYPE=1 -s FULL_ES3=1 -s OFFSCREEN_FRAMEBUFFER=1")
@@ -71,6 +62,7 @@ file(GLOB SRC
 
 include_directories(SYSTEM external/stbimage)
 include_directories(SYSTEM external/magic_enum)
+include_directories(SYSTEM external)
 include_directories("${PROJECT_BINARY_DIR}" ${IMGUI_DIR} ${IMGUI_DIR}/backends )
 add_executable(${CMAKE_PROJECT_NAME} ${SRC} )
 target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC renderer CDT lua) #flecs::flecs_static 

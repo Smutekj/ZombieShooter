@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <functional>
+
 #include <Vector2.h>
 #include <Renderer.h>
 
