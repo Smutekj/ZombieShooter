@@ -17,6 +17,8 @@
 #include <FrameBuffer.h>
 #include <Renderer.h>
 #include <Particles.h>
+#include <Font.h>
+
 #include <Triangulation.h>
 
 #include "Shadows/VisibilityField.h"
@@ -77,9 +79,6 @@ private:
     float m_time = 0.f;
     std::chrono::high_resolution_clock::time_point tic;
 
-    std::vector<std::shared_ptr<EnviromentEffect>> m_enviroment;
-    std::shared_ptr<Water> m_water;
-
     FrameBuffer test_pixels = {800, 600};
     Renderer test_canvas = {test_pixels};
 
@@ -90,4 +89,6 @@ private:
     std::unique_ptr<MapGridDiagonal> m_map;
 
     std::shared_ptr<GameObject> p_player;
+
+    Font m_font;
 };

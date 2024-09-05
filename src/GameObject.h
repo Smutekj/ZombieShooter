@@ -32,23 +32,16 @@ enum class ObjectType
 {
     Enemy,
     Bullet,
-    Missile,
-    Bomb,
-    Laser,
-    Meteor,
-    Heart,
-    SpaceStation,
-    Explosion,
     Player,
-    Flag,
-    Boss,
-    Trigger,
-    EMP,
+    Orbiter,
+    VisualEffect,
     Count
 };
 
 enum class EffectType
 {
+    Fire = static_cast<int>(ObjectType::Count),
+    Water,
     ParticleEmiter,
     AnimatedSprite,
 
@@ -72,6 +65,12 @@ class GameObject
 {
 
 public:
+    GameObject(GameObject& left)
+    : m_textures(left.m_textures)
+    {
+        m_collision_shape = std::move(left.m_collision_shape);
+    }
+    GameObject() = default;
     GameObject(GameWorld *world, TextureHolder &textures, ObjectType type);
 
     virtual void update(float dt) = 0;
@@ -82,7 +81,6 @@ public:
     virtual ~GameObject() {}
 
     void removeCollider();
-    bool isBloomy() const;
     void kill();
     bool isDead() const;
     void updateAll(float dt);
@@ -108,27 +106,27 @@ public:
 
 public:
 
-    utils::Vector2f m_vel = {0, 0};
     int m_id;
+    Transform m_transform;
+    utils::Vector2f m_vel = {0, 0};
+    std::string m_name = "DefaultName";
 
 protected:
-    TextureHolder &m_textures;
+    TextureHolder* m_textures;
+    GameWorld *m_world;
     
     std::unique_ptr<Polygon> m_collision_shape = nullptr;
     std::unique_ptr<RigidBody> m_rigid_body = nullptr;
     
     utils::Vector2f m_pos;
+    utils::Vector2f m_size = {1, 1};
     float m_angle = 0;
     
-    GameWorld *m_world;
-    
     bool m_is_dead = false;
-    bool m_is_bloomy = false;
     
-    utils::Vector2f m_size = {1, 1};
 
 private:
-    std::function<void(int, ObjectType)> m_on_destruction_callback = [](int, ObjectType){};
 
+    std::function<void(int, ObjectType)> m_on_destruction_callback = [](int, ObjectType){};
     ObjectType m_type;
 };

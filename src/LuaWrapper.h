@@ -1,7 +1,6 @@
 #pragma once
 //! BOTH OF THESE FILES WERE STOLEN AND ADAPTED FROM HERE:
 
-
 #include <memory>
 #include <string>
 
@@ -14,17 +13,25 @@ extern "C"
 }
 #endif
 
+#include <spdlog/sinks/ringbuffer_sink.h>
+
+
 class GameWorld;
 namespace spdlog
 {
     class logger;
+    // namespace sinks
+    // {
+    //     class ringbuffer_sink_mt;
+    // }
 }
 
 class LuaWrapper
 {
 public:
     static LuaWrapper *getSingleton();
-    void doString(const std::string &command);
+    bool doString(const std::string &command);
+    std::string getLastError();
     ~LuaWrapper();
 
 private:
@@ -33,6 +40,7 @@ private:
     void initializeLuaFunctions();
 
 private:
-    lua_State* m_lua_state;
+    lua_State *m_lua_state;
     std::shared_ptr<spdlog::logger> m_logger;
+    std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ringbuffer_sink = nullptr;
 };

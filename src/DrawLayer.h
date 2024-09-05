@@ -76,7 +76,7 @@ struct LayersHolder
         at(name)->toggleActivate();
     }
 
-    void draw(Renderer &target);
+    void draw(Renderer &target, const View& view);
 
     std::map<int, std::shared_ptr<DrawLayer>> m_layers;
     std::map<std::string, int> m_name2depth;

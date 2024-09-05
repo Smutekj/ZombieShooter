@@ -111,11 +111,12 @@ void LayersHolder::clearAllLayers()
     }
 }
 
-void LayersHolder::draw(Renderer &target)
+void LayersHolder::draw(Renderer &target, const View& view)
 {
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     for (auto &[depth, layer] : m_layers)
     {
+        layer->m_canvas.m_view = view; //! set view here
         if (layer->isActive())
         {
             layer->draw(target);

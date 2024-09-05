@@ -3,11 +3,15 @@
 #include "Polygon.h"
 
 #include <Texture.h>
+#include "magic_enum.hpp"
+#include "magic_enum_utility.hpp"
 
 GameObject::GameObject(GameWorld* world, TextureHolder& textures, ObjectType type)
  :
-  m_world(world), m_textures(textures), m_type(type)
-  {}
+  m_world(world), m_textures(&textures), m_type(type)
+  {
+    m_name = magic_enum::enum_name(type); 
+  }
 
 void GameObject::updateAll(float dt)
 {
@@ -78,11 +82,6 @@ ObjectType GameObject::getType() const
         }
     }
 
-    bool GameObject::isBloomy()const
-    {
-        return m_is_bloomy;
-    }
-
     void GameObject::kill()
     {
         m_is_dead = true;
@@ -120,3 +119,4 @@ ObjectType GameObject::getType() const
             m_collision_shape->setRotation(angle);
         }
     }
+

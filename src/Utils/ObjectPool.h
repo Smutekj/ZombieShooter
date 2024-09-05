@@ -86,7 +86,7 @@ struct DynamicObjectPool
 {
 
 public:
-    DynamicObjectPool()
+    constexpr DynamicObjectPool()
     {
         for (int i = 0; i < MAX_OBJECTS; ++i)
         {
@@ -96,7 +96,7 @@ public:
     }
 
     template <class T>
-    int addObject(T &&obj)
+    constexpr int addObject(T &&obj)
     {
         assert(!free_inds.empty()); //! there is at least one object!
         auto new_entity_ind = *free_inds.begin();
@@ -112,7 +112,7 @@ public:
         return new_entity_ind;
     }
 
-    void remove(int entity_ind)
+    constexpr void remove(int entity_ind)
     {
         free_inds.insert(entity_ind);
         assert(entity2ind.at(entity_ind) != -1);
@@ -128,21 +128,26 @@ public:
         entity2ind.at(entity_ind) = -1;
     }
 
-    DataType &at(int entity_ind)
+    constexpr const DataType &at(int entity_ind) const
+    {
+        assert(entity_ind < MAX_OBJECTS && entity2ind.at(entity_ind) != -1);
+        return objects.at(entity2ind.at(entity_ind));
+    }
+    constexpr DataType &at(int entity_ind)
     {
         assert(entity_ind < MAX_OBJECTS && entity2ind.at(entity_ind) != -1);
         return objects.at(entity2ind.at(entity_ind));
     }
 
-    std::vector<DataType> &getObjects()
+    constexpr std::vector<DataType> &getObjects()
     {
         return objects;
     }
-    std::vector<int> &getEntityIds()
+    constexpr std::vector<int> &getEntityIds()
     {
         return object2entity;
     }
-    void clear()
+    constexpr void clear()
     {
         for (auto &ind : object2entity)
         {

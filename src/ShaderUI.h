@@ -20,8 +20,9 @@
 
 enum class UIWindowType
 {
-    DEBUG = 0,
-    SHADERS,
+    Debug = 0,
+    Shaders,
+    Lua,
     COUNT
 };
 
@@ -104,11 +105,6 @@ enum class TextureID
 
 class ShadersWindow : public UIWindow
 {
-    enum Data
-    {
-        COLOR1,
-        COLOR2,
-    };
 
 public:
     ShadersWindow(TextureHolder &textures, LayersHolder &layers, Renderer& window);
@@ -129,6 +125,23 @@ private:
 
     std::vector<DrawLayerUISlot> m_slots;
     std::vector<ShaderSlot> m_shader_slots;
+};
+
+class LuaWindow : public UIWindow
+{
+
+public:
+    LuaWindow();
+
+    virtual ~LuaWindow(){}
+    virtual void draw() override;
+private:
+
+private:
+    std::deque<std::string> m_command_history;
+    std::string m_current_command = ""; 
+    std::string m_last_error_msg = "";
+    int m_selected_command_ind = 0; 
 };
 
 class FrameBuffer;
@@ -208,3 +221,4 @@ private:
     std::vector<ShaderSlot> m_shaders_data;
     std::string m_command = "";
 };
+

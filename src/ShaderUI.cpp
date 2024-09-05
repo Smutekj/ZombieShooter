@@ -18,12 +18,17 @@
 #include <magic_enum.hpp>
 #include <magic_enum_utility.hpp>
 
+#include <spdlog/spdlog.h>
+#include <spdlog/cfg/env.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
+
 UIWindow::UIWindow(std::string name) : name(name)
 {
 }
 
 UI::UI(Window &window, TextureHolder &textures,
-       LayersHolder &layers, Renderer& window_canvas)
+       LayersHolder &layers, Renderer &window_canvas)
     : m_layers(layers)
 {
     // Setup Dear ImGui context
@@ -39,10 +44,14 @@ UI::UI(Window &window, TextureHolder &textures,
     ImGui_ImplOpenGL3_Init();
 
     auto shaders_window = std::make_unique<ShadersWindow>(textures, m_layers, window_canvas);
+    auto lua_window = std::make_unique<LuaWindow>();
 
-    m_window_data[UIWindowType::SHADERS].p_window = std::move(shaders_window);
-    m_window_data[UIWindowType::SHADERS].name = "Shaders";
-    m_window_data[UIWindowType::SHADERS].is_active = true;
+    m_window_data[UIWindowType::Shaders].p_window = std::move(shaders_window);
+    m_window_data[UIWindowType::Shaders].name = "Shaders";
+    m_window_data[UIWindowType::Shaders].is_active = false;
+    m_window_data[UIWindowType::Lua].p_window = std::move(lua_window);
+    m_window_data[UIWindowType::Lua].name = "Lua";
+    m_window_data[UIWindowType::Lua].is_active = true;
 }
 
 std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path shader_dir = "../Resources/")
@@ -53,17 +62,63 @@ std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path 
     return shader_names;
 }
 
-ShadersWindow::ShadersWindow(TextureHolder &textures, LayersHolder &layers, Renderer& window_canvas)
+ShadersWindow::ShadersWindow(TextureHolder &textures, LayersHolder &layers, Renderer &window_canvas)
     : UIWindow("Shaders"), m_textures(textures)
 {
-    for(auto& [depth, l_ptr] : layers.m_layers)
+    for (auto &[depth, l_ptr] : layers.m_layers)
     {
         m_slots.emplace_back(*l_ptr);
     }
-    for(auto& [id, shader] : window_canvas.getShaders().getShaders())
+    for (auto &[id, shader] : window_canvas.getShaders().getShaders())
     {
         m_shader_slots.emplace_back(*shader, id);
     }
+}
+
+LuaWindow::LuaWindow()
+    : UIWindow("Lua")
+{
+    m_current_command.reserve(200);
+}
+
+void LuaWindow::draw()
+{
+    ImGui::Begin("Lua");
+
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue;
+
+    if (ImGui::InputText("Command", m_current_command.data(), 200, flags))
+    {
+        auto lua = LuaWrapper::getSingleton();
+        if(!lua->doString(m_current_command.c_str()))
+        {
+            m_last_error_msg = lua->getLastError();
+        }else{
+            m_last_error_msg = "";
+        }
+        //! add command to history and remove old commands
+        m_command_history.push_back(m_current_command);
+        if (m_command_history.size() > 20)
+        {
+            m_command_history.pop_front();
+        }
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+    ImGui::Text("%s", m_last_error_msg.c_str());
+    ImGui::PopStyleColor();
+
+    if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
+    {
+        ImGui::SetNextFrameWantCaptureKeyboard(true); 
+        if (ImGui::IsKeyChordPressed(ImGuiKey_DownArrow) && m_command_history.size() > 0)
+        {
+            m_selected_command_ind = (m_selected_command_ind + 1)%m_command_history.size();
+            m_current_command = m_command_history.at(m_selected_command_ind);        
+        }
+    }
+
+    ImGui::End();
 }
 
 ShadersWindow::~ShadersWindow() {}
@@ -97,7 +152,7 @@ void ShadersWindow::drawUniformValue(const char *name, UniformType &value)
                     {   
                         if(ImGui::Button(name))
                         {
-                            value != value; 
+                            value = !value; 
                         }
                     }
                    else if constexpr (std::is_same_v<T, glm::vec2>)
@@ -259,34 +314,7 @@ void UI::draw(Window &window)
             data.is_active = !data.is_active;
     }
 
-    ImGui::Begin("Simulation");
-    if (ImGui::Button("Start"))
-    {
-        m_simulation_on = true;
-    }
-    if (ImGui::Button("Stop"))
-    {
-        m_simulation_on = false;
-    }
-    if (ImGui::Button("Reset"))
-    {
-        m_simulation_on = false;
-        m_reset = true;
-    }
-    if (ImGui::InputInt("Simulation slot", &m_simulation_slot))
-    {
-        if (m_simulation_slot > 4)
-        {
-            m_simulation_slot = 0;
-        }
-    }
-
-
-    ImGui::InputText("Command", m_command.data(), 150);
-    if(ImGui::Button("Run"))
-    {
-        LuaWrapper::getSingleton()->doString(m_command.c_str());
-    }
+    ImGui::Begin("Colors");
 
     ImGui::InputFloat4("Init Color", &m_particle_init_color.r);
     ImGui::InputFloat4("End Color", &m_particle_end_color.r);
@@ -306,7 +334,6 @@ void UI::draw(Window &window)
         }
         p_layer->setBackground(m_layer_background);
     }
-
 
     ImGui::End();
 

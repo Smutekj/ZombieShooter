@@ -36,6 +36,26 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(lua)
 
+FetchContent_Declare(
+  LuaBridge
+  GIT_REPOSITORY https://github.com/vinniefalco/LuaBridge
+  GIT_TAG master 
+)
+FetchContent_MakeAvailable(LuaBridge)
+
+set(BOOST_INCLUDE_LIBRARIES mpl)
+set(BOOST_ENABLE_CMAKE ON)
+# FetchContent_Declare(
+#   boost
+#   GIT_REPOSITORY https://github.com/boostorg/boost.git
+#   GIT_TAG boost-1.80.0
+# )
+# FetchContent_MakeAvailable(boost)
+
+
+
+find_package(Freetype REQUIRED)
+find_package(Boost REQUIRED)
 
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 set(USE_FLAGS "-std=c++20 -s USE_SDL=2 -s USE_FREETYPE=1 -s FULL_ES3=1 -s OFFSCREEN_FRAMEBUFFER=1")
@@ -48,6 +68,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS} --embed-file ../Resources --emb
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS}")
 set(CMAKE_EXECUTABLE_SUFFIX .html)
 endif()
+
 
 file(GLOB SRC
      "src/*.h"
@@ -63,8 +84,7 @@ file(GLOB SRC
 include_directories(SYSTEM external/stbimage)
 include_directories(SYSTEM external/magic_enum)
 include_directories(SYSTEM external)
-include_directories("${PROJECT_BINARY_DIR}" ${IMGUI_DIR} ${IMGUI_DIR}/backends )
+include_directories(SYSTEM ${FREETYPE_INCLUDE_DIRS})
+include_directories("${PROJECT_BINARY_DIR}" ${IMGUI_DIR} ${IMGUI_DIR}/backends ${BOOST_INCLUDE_DIRS} ${LUABRIDG3E_INCLUDE_DIRS})
 add_executable(${CMAKE_PROJECT_NAME} ${SRC} )
-target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC renderer CDT lua) #flecs::flecs_static 
-
-
+target_link_libraries(${CMAKE_PROJECT_NAME} PUBLIC renderer CDT lua ${LUABRIDG3E_LIBRARIES} ${BOOST_LIBRARIES} ${FREETYPE_LIBRARIES}) #flecs::flecs_static 

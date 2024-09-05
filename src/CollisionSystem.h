@@ -17,7 +17,6 @@ namespace Collisions
     template <int N_VERTS>
     struct ConvexPolygon : public Transform
     {
-        
         std::array<utils::Vector2f, N_VERTS> vertices;
     };
 

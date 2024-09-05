@@ -2,10 +2,18 @@
 #include "DrawLayer.h"
 #include "MapGrid.h"
 
+#include "GameWorld.h"
 #include "Utils/RandomTools.h"
 
-FireEffect::FireEffect()
-    : m_smoke(200), m_fire(200)
+
+EnviromentEffect::EnviromentEffect(TextureHolder& textures, ObjectType type)
+: GameObject(&GameWorld::getWorld(), textures, type)
+{
+
+}
+
+FireEffect::FireEffect(TextureHolder& textures)
+    : m_smoke(200), m_fire(200), EnviromentEffect(textures, ObjectType::VisualEffect)
 {
     m_smoke.setInitColor(m_smoke_color);
     m_smoke.setFinalColor(m_smoke_edge_color);
@@ -53,12 +61,10 @@ void FireEffect::setEdgeColor(Color new_color)
     m_fire_edge_color = new_color;
 }
 
-void FireEffect::draw(LayersHolder &layers, View view)
+void FireEffect::draw(LayersHolder &layers)
 {
     auto &smoke_canvas = layers.getCanvas("Smoke");
     auto &fire_canvas = layers.getCanvas("Fire");
-    smoke_canvas.m_view = view;
-    fire_canvas.m_view = view;
 
     auto position = getPosition();
     m_smoke.setSpawnPos({position.x, position.y + 10}); //! smoke starts slightly above fire
@@ -70,7 +76,7 @@ void FireEffect::draw(LayersHolder &layers, View view)
 }
 
 Water::Water(ShaderHolder &shaders, LayersHolder &layers)
-    : m_water_verts(shaders.get("Water")), m_layers(&layers)
+    : m_water_verts(shaders.get("Water"))
 {
 }
 void Water::setColor(Color new_color)
@@ -78,23 +84,23 @@ void Water::setColor(Color new_color)
     m_water_color = new_color;
 }
 
-void Water::draw(LayersHolder &layers, View view)
+void Water::draw(LayersHolder &layers)
 {
+    assert(layers.hasLayer("Water"));
     auto &water_canvas = layers.getCanvas("Water");
-    water_canvas.m_view = view;
     water_canvas.drawVertices(m_water_verts);
+    m_target_size = water_canvas.getTargetSize();
 }
 
 void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<int> &water_tri_inds)
 {
-    assert(m_layers->hasLayer("Water"));
-    auto &water_cavnas = m_layers->getCanvas("Water");
     auto &triangles = m_cdt.m_triangles;
 
-    auto normalize_tex = [target_size = water_cavnas.getTargetSize()](cdt::Vector2f world_pos) -> utils::Vector2f
+    auto normalize_tex = [this](cdt::Vector2f world_pos) -> utils::Vector2f
     {
-        return {world_pos.x / target_size.x, world_pos.y / target_size.y};
+        return {world_pos.x / m_target_size.x, world_pos.y / m_target_size.y};
     };
+
     auto n_verts_prev = m_water_verts.size();
     m_water_verts.resize(3 * water_tri_inds.size());
     for (int ind = 0; ind < water_tri_inds.size(); ++ind)
