@@ -28,8 +28,20 @@ using DEntityList2 = mp11::mp_push_back<DEntityList, DynamicEntityHolder<Project
 GameWorld::GameWorld()
 {
 
+    m_cdt = std::make_shared<cdt::Triangulation<cdt::Vector2i>>(cdt::Vector2i{map::MAP_SIZE_X, map::MAP_SIZE_Y});
+    m_pathfinder = std::make_shared<pathfinding::PathFinder>(*m_cdt);
     loadTextures();
 
+    try 
+    {
+        m_logger = spdlog::basic_logger_mt("general", "logs/general.txt");
+        m_logger->info("PENIS");
+        m_logger->flush_on(spdlog::level::info);
+    }
+    catch (const spdlog::spdlog_ex &ex)
+    {
+        std::cout << "Log init failed: " << ex.what() << std::endl;
+    }
     // m_neighbour_searcher = std::make_unique<GridNeighbourSearcher>();
 }
 
@@ -39,6 +51,32 @@ std::shared_ptr<GameObject> GameWorld::addObject(std::string obj_type_text, std:
     if (obj_type.has_value())
     {
         return addObject(obj_type.value(), name, parent_id);
+    }
+    std::string msg = " OBJECT NOT CREATED! ObjType: " + obj_type_text + " Does not exist!";
+    spdlog::get("lua_logger")->error(msg);
+    return nullptr;
+}
+
+std::shared_ptr<EnviromentEffect> GameWorld::addEffect(std::string obj_type_text, std::string name, int parent_id)
+{
+
+    std::shared_ptr<EnviromentEffect> new_object;
+
+    auto obj_type = magic_enum::enum_cast<EffectType>(obj_type_text);
+    if (obj_type.has_value())
+    {
+        switch (obj_type.value())
+        {
+        case EffectType::Fire:
+            new_object = std::make_shared<FireEffect>(m_shaders, m_textures);
+            break;
+        case EffectType::Water:
+            new_object = std::make_shared<Water>(m_shaders, m_textures);
+            break;
+        }
+
+        m_to_add.push({new_object, name, parent_id});
+        return new_object;
     }
     std::string msg = " OBJECT NOT CREATED! ObjType: " + obj_type_text + " Does not exist!";
     spdlog::get("lua_logger")->error(msg);
@@ -66,7 +104,7 @@ std::shared_ptr<GameObject> GameWorld::addObject(ObjectType type, std::string ob
         new_object = std::make_shared<Projectile>(this, m_textures);
         break;
     case ObjectType::Enemy:
-        new_object = std::make_shared<Enemy>(this, m_textures, m_collision_system, m_player);
+        new_object = std::make_shared<Enemy>(*m_pathfinder, m_textures, m_collision_system, m_player);
         break;
     case ObjectType::Orbiter:
         new_object = std::make_shared<OrbitingShield>(this, m_textures);
@@ -106,7 +144,21 @@ void GameWorld::addQueuedEntities()
 
         m_entities.at(new_id)->onCreation();
         m_name2id[new_name] = new_id;
+        m_id2name[new_id] = new_name;
     }
+}
+
+bool GameWorld::kill(const std::string name)
+{
+
+    if (m_name2id.count(name) == 0)
+    {
+        return false;
+    }
+
+    get(name)->kill();
+
+    return true;
 }
 
 void GameWorld::removeQueuedEntities()
@@ -124,6 +176,7 @@ void GameWorld::removeQueuedEntities()
         m_scene.removeObjectAndChildren(object->getId());
         m_entities.remove(object->getId());
         m_name2id.erase(name);
+        m_id2name.erase(object->getId());
         m_to_destroy.pop();
     }
 }
@@ -134,17 +187,14 @@ void GameWorld::destroyObject(int entity_id)
     std::weak_ptr<GameObject> e = m_entities.at(entity_id);
     m_entity_destroyed_subject.notify(e);
 
-    m_to_destroy.push({
-        m_entities.at(entity_id),
-    });
+    m_to_destroy.push({m_entities.at(entity_id), m_id2name.at(entity_id)});
 }
 
 void GameWorld::update(float dt)
 {
 
-    m_collision_system.update();
-
     m_scene.update(dt);
+    m_collision_system.update();
 
     for (auto &obj : m_entities.getObjects())
     {
@@ -155,8 +205,8 @@ void GameWorld::update(float dt)
         }
     }
 
-    addQueuedEntities();
     removeQueuedEntities();
+    addQueuedEntities();
 }
 
 void GameWorld::draw(LayersHolder &layers)
@@ -201,6 +251,21 @@ void GameWorld::loadTextures()
         std::string texture_name = texture_filename.substr(0, pos_right);
         m_textures.add(texture_name, "../Resources/" + texture_filename);
     }
+
+    m_shaders.load("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
+    m_shaders.load("Water", "../Resources/basictex.vert", "../Resources/water.frag");
+    m_shaders.load("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
+    m_shaders.load("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
+    m_shaders.load("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
+    m_shaders.load("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
+    m_shaders.load("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
+    m_shaders.load("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
+    m_shaders.load("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
+    m_shaders.load("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
+    m_shaders.load("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
+    m_shaders.load("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");
+    m_shaders.load("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
+    m_shaders.load("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
 }
 //
 // static ConcreteEntityHolder<PlayerEntity> s_player_holder;
@@ -227,6 +292,28 @@ int GameWorld::getIdOf(const std::string &name) const
     }
     return m_name2id.at(name);
 }
+const std::string GameWorld::getName(int entity_id) const
+{
+    if (m_id2name.count(entity_id) == 0)
+    {
+        spdlog::get("lua_logger")->error(" ID " + std::to_string(entity_id) + " does not exist!");
+        return "";
+    }
+    return m_id2name.at(entity_id);
+}
+bool GameWorld::setName(int entity_id, std::string new_name)
+{
+    if (m_id2name.count(entity_id) == 0 || new_name.size() == 0)
+    {
+        spdlog::get("lua_logger")->error(" ID " + std::to_string(entity_id) + " does not exist!");
+        return false;
+    }
+    auto &old_name = m_id2name.at(entity_id);
+    m_name2id.erase(old_name);
+    m_id2name.at(entity_id) = new_name;
+    m_name2id[new_name] = entity_id;
+    return true;
+}
 
 std::shared_ptr<GameObject> GameWorld::get(int entity_id) const
 {
@@ -248,14 +335,13 @@ std::shared_ptr<EntityType> GameWorld::get(const std::string &name) const
     }
     return nullptr;
 }
-std::shared_ptr<GameObject> GameWorld::get(const std::string &name) const
+
+std::shared_ptr<GameObject> GameWorld::get(const std::string name) const
 {
     if (m_name2id.count(name) == 0)
     {
-        spdlog::get("lua_logger")->error(" Object with name: " + std::string(name) + " does not exist ");
+        // spdlog::get("lua_logger")->error(" Object with name: " + std::string(name) + " does not exist ");
         return nullptr;
     }
     return get(m_name2id.at(name));
 }
-
-

@@ -76,39 +76,96 @@ void drawProgramToTexture(Sprite2 &rect, Renderer &target, std::string program)
     target.drawAll();
 }
 
+struct EdgeLord
+{
+
+public:
+};
+
+void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal &map, SurfaceManager &surfaces)
+{
+    cdt.reset();
+    map.extractBoundaries();
+    auto edges = map.extractEdges();
+    std::vector<cdt::EdgeVInd> edge_inds;
+    for (auto &e : edges)
+    {
+        cdt::EdgeVInd e_ind;
+        auto v_ind1 = cdt.insertVertexAndGetData(e.from).overlapping_vertex;
+        e_ind.from = (v_ind1 == -1 ? cdt.m_vertices.size() - 1 : v_ind1);
+
+        auto v_ind2 = cdt.insertVertexAndGetData(e.to()).overlapping_vertex;
+        e_ind.to = (v_ind2 == -1 ? cdt.m_vertices.size() - 1 : v_ind2);
+
+        edge_inds.push_back(e_ind);
+    }
+    for (auto &e : edge_inds)
+    {
+        cdt.insertConstraint(e);
+    }
+    if (!surfaces.readFromMap(map))
+    {
+        throw std::runtime_error("Map is fucked :(");
+    }
+    GameWorld::getWorld().getPathFinder().update();
+}
+
 Application::Application(int width, int height) : m_window(width, height),
                                                   m_window_renderer(m_window),
                                                   m_scene_pixels(width, height),
-                                                  m_scene_canvas(m_scene_pixels),
-                                                  m_cdt({800, 600}),
-                                                  m_vision(m_cdt),
-                                                  m_font("arial.ttf")
-
+                                                  m_scene_canvas(m_scene_pixels)
 {
-
-    m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{800, 600}, utils::Vector2i{80, 60});
-
+    using namespace map;
+    m_font = std::make_shared<Font>("arial.ttf");
+    m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
+    for (int i = 0; i < 100; ++i)
+    {
+        auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
+        auto map_cell = m_map->coordToCell(rand_pos);
+        m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {4, 4});
+    }
+
+    updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
     p_player = world.addObject(ObjectType::Player, "Player");
     p_player->setPosition({400, 300});
-    p_player->setSize({50, 50});
+    world.update(0); //! force insert player to world
+
+    for (int i = 0; i < 10; ++i)
+    {
+        auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
+        if (new_enemy)
+        {
+            auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
+            new_enemy->setPosition(rand_pos);
+            static_cast<Enemy &>(*new_enemy).m_target = p_player.get();
+        }
+    }
 
     std::filesystem::path path{"../Resources/"};
     auto shader_filenames = extractNamesInDirectory(path, ".frag");
 
-    auto &unit_layer = m_layers.addLayer("Unit", 10);
+    TextureOptions options;
+    options.wrap_x = TexWrapParam::ClampEdge;
+    options.wrap_y = TexWrapParam::ClampEdge;
+
+    auto &unit_layer = m_layers.addLayer("Unit", 10, options);
     unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
-    auto &smoke_layer = m_layers.addLayer("Smoke", 4);
+    auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
     smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
-    auto &fire_layer = m_layers.addLayer("Fire", 6);
+    auto &fire_layer = m_layers.addLayer("Fire", 6, options);
     fire_layer.addEffect(std::make_unique<Bloom2>(width, height));
-    auto &wall_layer = m_layers.addLayer("Wall", 0);
-    wall_layer.addEffect(std::make_unique<Bloom2>(width, height));
-    auto &edge_detect = m_layers.addLayer("Light", 150);
-    edge_detect.addEffect(std::make_unique<LightCombine>(width, height));
-    auto &water_layer = m_layers.addLayer("Water", 3);
+    auto &wall_layer = m_layers.addLayer("Wall", 0, options);
+    wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
+    auto &light_layer = m_layers.addLayer("Light", 150, options);
+    light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
+    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    light_layer.addEffect(std::make_unique<LightCombine>(width, height));
+    light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
+    light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
+    auto &water_layer = m_layers.addLayer("Water", 3, options);
     // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
     //
     // assert(m_layers.hasLayer("Water"));
@@ -120,6 +177,7 @@ Application::Application(int width, int height) : m_window(width, height),
     }
     m_window_renderer.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     m_window_renderer.addShader("Water", "../Resources/basictex.vert", "../Resources/test.frag");
+    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
     m_window_renderer.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_window_renderer.addShader("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
     m_window_renderer.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
@@ -132,7 +190,9 @@ Application::Application(int width, int height) : m_window(width, height),
     m_scene_canvas.addShader("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
 
     // m_water = std::make_shared<Water>(m_window_renderer.getShaders(), m_layers);
-    auto &water = world.addVisualEffect<Water>("Water", m_window_renderer.getShaders(), m_layers);
+    auto &water = world.addVisualEffect<Water>("Water");
+    auto effect = world.addEffect("Fire", "TestFire", -1);
+    effect->setPosition(p_player->getPosition());
 
     auto texture_filenames = extractNamesInDirectory(path, ".png");
     for (auto &texture_filename : texture_filenames)
@@ -192,6 +252,14 @@ void Application::handleInput()
         case SDL_MOUSEBUTTONUP:
             onMouseButtonRelease(event.button);
             break;
+        case SDL_WINDOWEVENT:
+        {
+            if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+            {
+                onWindowResize(event.window);
+            }
+            break;
+        }
         default:
             break;
         }
@@ -204,17 +272,20 @@ void Application::onKeyPress(SDL_Keycode key)
 
     switch (key)
     {
-    case SDLK_LEFT:
+    case SDLK_a:
         m_is_moving_left = true;
         break;
-    case SDLK_RIGHT:
+    case SDLK_d:
         m_is_moving_right = true;
         break;
-    case SDLK_UP:
+    case SDLK_w:
         m_is_moving_up = true;
         break;
-    case SDLK_DOWN:
+    case SDLK_s:
         m_is_moving_down = true;
+        break;
+    case SDLK_LSHIFT:
+        m_is_sprinting = true;
         break;
     case SDLK_SPACE:
         fireProjectile(mouse_pos, p_player->getPosition());
@@ -245,31 +316,9 @@ void Application::onMouseButtonPress(SDL_MouseButtonEvent event)
         m_mouse_click_position = m_window_renderer.getMouseInWorld();
     }
 }
-std::vector<int> findConnectedTriInds(cdt::Triangulation<cdt::Vector2i> &cdt, int start_tri_ind)
+void Application::onWindowResize(SDL_WindowEvent event)
 {
-    std::vector<int> connected_inds;
-    auto &triangles = cdt.m_triangles;
-    auto n_triangles = triangles.size();
-    std::unordered_set<int> visited(n_triangles);
-    std::queue<int> to_visit;
-    to_visit.push(start_tri_ind);
-    while (!to_visit.empty())
-    {
-        auto curr = to_visit.front();
-        auto &curr_tri = triangles.at(curr);
-        to_visit.pop();
-        visited.insert(curr);
-        connected_inds.push_back(curr);
-        for (int i = 0; i < 3; ++i)
-        {
-            auto neighbour = curr_tri.neighbours[i];
-            if (!visited.contains(neighbour) && !curr_tri.is_constrained.at(i))
-            {
-                to_visit.push(neighbour);
-            }
-        }
-    }
-    return connected_inds;
+    m_window.setSize(event.data1, event.data2);
 }
 
 void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
@@ -277,6 +326,8 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     auto mouse_pos = m_window_renderer.getMouseInWorld();
     if (event.button == SDL_BUTTON_MIDDLE)
     {
+        auto mouse_pos2 = m_window_renderer.getMouseInWorld();
+        std::cout << mouse_pos.x << " " << mouse_pos.y << "\n";
         m_wheel_is_held = false;
     }
     if (isKeyPressed(SDL_SCANCODE_LCTRL) && event.button == SDL_BUTTON_RIGHT)
@@ -285,34 +336,21 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
         auto map_cell = m_map->coordToCell(mouse_pos.x, mouse_pos.y);
         std::cout << m_map->cellCoordX(map_cell) << " " << m_map->cellCoordY(map_cell) << "\n";
         m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {5, 5});
-        m_cdt.reset();
-        m_map->extractBoundaries();
-        auto edges = m_map->extractEdges();
-        std::vector<cdt::EdgeVInd> edge_inds;
-        for (auto &e : edges)
-        {
-            cdt::EdgeVInd e_ind;
-            auto v_ind1 = m_cdt.insertVertexAndGetData(e.from).overlapping_vertex;
-            e_ind.from = (v_ind1 == -1 ? m_cdt.m_vertices.size() - 1 : v_ind1);
-
-            auto v_ind2 = m_cdt.insertVertexAndGetData(e.to()).overlapping_vertex;
-            e_ind.to = (v_ind2 == -1 ? m_cdt.m_vertices.size() - 1 : v_ind2);
-
-            edge_inds.push_back(e_ind);
-        }
-        for (auto &e : edge_inds)
-        {
-            m_cdt.insertConstraint(e);
-        }
+        auto &cdt = GameWorld::getWorld().getTriangulation();
+        updateTriangulation(cdt, *m_map, m_surfaces);
+        auto &pf = GameWorld::getWorld().getPathFinder();
+        pf.update();
     }
     if (isKeyPressed(SDL_SCANCODE_LSHIFT) && event.button == SDL_BUTTON_RIGHT)
     {
-        auto tri_ind = m_cdt.findTriangle({mouse_pos.x, mouse_pos.y});
-        auto connected_inds = findConnectedTriInds(m_cdt, tri_ind);
+        auto &cdt = GameWorld::getWorld().getTriangulation();
+        auto tri_ind = cdt.findTriangle({mouse_pos.x, mouse_pos.y});
+        auto connected_inds = findConnectedTriInds(cdt, tri_ind);
         auto water = GameWorld::getWorld().get("Water");
+
         if (water)
         {
-            static_cast<Water &>(*water).readFromMap(m_cdt, connected_inds);
+            static_cast<Water &>(*water).readFromMap(cdt, connected_inds);
         }
     }
 }
@@ -323,17 +361,20 @@ void Application::onKeyRelease(SDL_Keycode key)
 
     switch (key)
     {
-    case SDLK_LEFT:
+    case SDLK_a:
         m_is_moving_left = false;
         break;
-    case SDLK_RIGHT:
+    case SDLK_d:
         m_is_moving_right = false;
         break;
-    case SDLK_UP:
+    case SDLK_w:
         m_is_moving_up = false;
         break;
-    case SDLK_DOWN:
+    case SDLK_s:
         m_is_moving_down = false;
+        break;
+    case SDLK_LSHIFT:
+        m_is_sprinting = false;
         break;
     case SDLK_ESCAPE:
         m_window.close();
@@ -358,27 +399,6 @@ void moveView(utils::Vector2f dr, Renderer &target)
     view.setCenter(new_view_center.x, new_view_center.y);
 }
 
-void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color)
-{
-    auto &canvas = layers.getCanvas("Unit");
-
-    utils::Vector2f prev_pos = pos + utils::Vector2f{radius, 0};
-    for (int i = 1; i < 50; ++i)
-    {
-        float x = pos.x + radius * std::cos(i / 50. * 2. * M_PIf);
-        float y = pos.y + radius * std::sin(i / 50. * 2. * M_PIf);
-        canvas.drawLineBatched(prev_pos, {x, y}, 1.0, color, GL_DYNAMIC_DRAW);
-        prev_pos = {x, y};
-    }
-    utils::Vector2f left_eye_pos1 = pos + utils::Vector2f{-radius * 0.2, radius * 0.4};
-    utils::Vector2f left_eye_pos2 = pos + utils::Vector2f{-radius * 0.6, radius * 0.5};
-    utils::Vector2f right_eye_pos1 = pos + utils::Vector2f{+radius * 0.2, radius * 0.4};
-    utils::Vector2f right_eye_pos2 = pos + utils::Vector2f{+radius * 0.6, radius * 0.5};
-    canvas.drawLineBatched(left_eye_pos1, left_eye_pos2, 1.0, color, GL_DYNAMIC_DRAW);
-    canvas.drawLineBatched(right_eye_pos1, right_eye_pos2, 1.0, color, GL_DYNAMIC_DRAW);
-    // canvas.drawCricleBatched(, 1.0, color, GL_DYNAMIC_DRAW);
-}
-
 float inline dir2angle(const utils::Vector2f &dir)
 {
     return 180.f / M_PIf * std::atan2(dir.y, dir.x);
@@ -398,44 +418,85 @@ void Application::update(float dt = 0.016f)
     }
 
     auto &world = GameWorld::getWorld();
+    auto p_player = world.get("Player");
+    if (p_player)
+    {
+        p_player->m_vel.x = 30.f * ((int)m_is_moving_right - (int)m_is_moving_left);
+        p_player->m_vel.y = 30.f * ((int)m_is_moving_up - (int)m_is_moving_down);
+        int a = m_is_moving_down + m_is_moving_left + m_is_moving_up + m_is_moving_right;
+        if (a >= 2)
+        {
+            p_player->m_vel /= std::sqrt(2.f);
+        }
+        if (m_is_sprinting)
+        {
+            p_player->m_vel *= 3.f;
+        }
+    }
     world.update(0.016f);
     m_time += 0.016f;
     //! set time in shaders
     Shader::m_time = m_time;
 
     auto &unit_canvas = m_layers.getCanvas("Unit");
+    auto &wall_canvas = m_layers.getCanvas("Wall");
 
     auto mouse_coords = m_window_renderer.getMouseInWorld();
-    // drawTriangles(m_cdt, wall_canvas, m_ui->getBackgroundColor());
-    world.draw(m_layers);
-    // auto& light_canvas = m_layers.getCanvas("Light");
-    // light_canvas.m_view = m_window_renderer.m_view;
-    // light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f/180.f*3.145f, 50, 100, m_ui->getLightColor());
-
+    auto wall_color = m_ui->getBackgroundColor();
+    wall_color.b = (std::sin(m_time) + 1.f) * 30.f + 20.f;
+    // drawTriangles(world.getTriangulation(), wall_canvas, wall_color);
     m_layers.clearAllLayers();
+
+    //! draw world
+    world.draw(m_layers);
+    auto &light_canvas = m_layers.getCanvas("Light");
+    light_canvas.m_view = m_window_renderer.m_view;
+    light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f, 200, 300, m_ui->getLightColor());
+
     //! clear and draw into scene
-    m_scene_canvas.clear({0, 0, 0, 1});
+    m_scene_canvas.clear({0, 0, 0, 0});
+    //! draw background
+    Sprite2 background(*m_textures.get("grass"));
+    background.m_color = ColorByte{255, 255, 255, 0};
+    utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x, m_map->m_cell_count.y * m_map->m_cell_size.y};
+    background.setPosition(map_size / 2.f);
+    background.setScale(map_size / 2.f);
+    auto old_view = m_scene_canvas.m_view;
+    m_scene_canvas.m_view = m_window_renderer.m_view;
+    m_scene_canvas.drawSprite(background, "Instanced", GL_DYNAMIC_DRAW);
+    m_scene_canvas.drawAll();
+    m_scene_canvas.m_view = old_view;
     m_layers.draw(m_scene_canvas, m_window_renderer.m_view);
 
     // //! draw everything to a window quad
     m_window.clear({0, 0, 0, 0});
-    auto old_view = m_window_renderer.m_view;
-    Sprite2 screen_sprite(m_scene_pixels.getTexture());
     auto scene_size = m_scene_pixels.getSize();
+
+    old_view = m_window_renderer.m_view;
+    Sprite2 screen_sprite(m_scene_pixels.getTexture());
     screen_sprite.setPosition(scene_size / 2.f);
     screen_sprite.setScale(scene_size / 2.f);
     m_window_renderer.m_view.setCenter(screen_sprite.getPosition());
     m_window_renderer.m_view.setSize(scene_size);
     m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
+    auto old_factors = m_window_renderer.m_blend_factors;
+    m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::SrcAlpha};
     m_window_renderer.drawAll();
-
-    // Sprite2 test_sprite(m_font.m_pixels->getTexture());
-    // test_sprite.setScale(utils::Vector2f{200., 150.});
-    // test_sprite.setPosition(utils::Vector2f{200., 300.});
-    // m_window_renderer.drawSprite(test_sprite, "Instanced", GL_DYNAMIC_DRAW);
-    // m_window_renderer.drawAll();
-
+    m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;
+
+    // Text text;
+    // m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
+    // m_window_renderer.m_view.setSize(m_window.getSize());
+    // text.setPosition(100, 0);
+    // text.setScale(1, 1);
+    // text.setFont(m_font);
+    // text.setColor({255, 255, 255, 255});
+    // std::string text_test = "Quest: ...";
+    // text.setText(text_test);
+    // m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
+    // m_window_renderer.drawAll();
+    // m_window_renderer.m_view = old_view;
 
     m_ui->draw(m_window);
 }

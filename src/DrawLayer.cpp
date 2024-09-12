@@ -9,6 +9,15 @@ DrawLayer::DrawLayer(int width, int height)
       m_canvas(m_pixels)
 {
 }
+DrawLayer::DrawLayer(int width, int height, TextureOptions options)
+    : m_tmp_pixels1(width, height, options),
+      m_tmp_pixels2(width, height, options),
+      m_pixels(width, height, options),
+      m_tmp_canvas1(m_tmp_pixels1),
+      m_tmp_canvas2(m_tmp_pixels2),
+      m_canvas(m_pixels)
+{
+}
 
 
 void DrawLayer::toggleActivate()
@@ -49,6 +58,7 @@ void DrawLayer::draw(Renderer &window_rend)
     {
         drawDirectly(window_rend);
     }
+
 }
 
 void DrawLayer::drawDirectly(Renderer &canvas)
@@ -82,9 +92,9 @@ Color DrawLayer::getBackground()
     return m_background_color;
 }
 
-DrawLayer &LayersHolder::addLayer(std::string name, int depth)
+DrawLayer &LayersHolder::addLayer(std::string name, int depth, TextureOptions options)
 {
-    auto new_layer = std::make_shared<DrawLayer>(800, 600);
+    auto new_layer = std::make_shared<DrawLayer>(800, 600, options);
     m_layers[depth] = new_layer;
     m_name2depth[name] = depth;
     new_layer->m_canvas.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
@@ -113,7 +123,6 @@ void LayersHolder::clearAllLayers()
 
 void LayersHolder::draw(Renderer &target, const View& view)
 {
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
     for (auto &[depth, layer] : m_layers)
     {
         layer->m_canvas.m_view = view; //! set view here

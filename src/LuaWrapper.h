@@ -31,16 +31,17 @@ class LuaWrapper
 public:
     static LuaWrapper *getSingleton();
     bool doString(const std::string &command);
+    bool doFile(const std::string &filename);
     std::string getLastError();
     ~LuaWrapper();
 
+    lua_State *m_lua_state;
 private:
     static LuaWrapper *s_instance;
     LuaWrapper();
     void initializeLuaFunctions();
 
 private:
-    lua_State *m_lua_state;
     std::shared_ptr<spdlog::logger> m_logger;
     std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ringbuffer_sink = nullptr;
 };

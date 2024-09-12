@@ -140,8 +140,12 @@ private:
 private:
     std::deque<std::string> m_command_history;
     std::string m_current_command = ""; 
+    std::string m_script_name = ""; 
     std::string m_last_error_msg = "";
+    std::string m_entered_name = "";
+    Vec2 m_coords = {0,0};
     int m_selected_command_ind = 0; 
+    int m_selected_entity_id = 0; 
 };
 
 class FrameBuffer;

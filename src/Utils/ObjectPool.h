@@ -68,7 +68,7 @@ struct ObjectPool
         assert(entity2ind.at(entity_ind) != -1);
 
         auto vec_ind = entity2ind.at(entity_ind);
-        active_inds.at(vec_ind) = active_inds.back();
+        std::swap(active_inds.at(vec_ind), active_inds.back());
         entity2ind.at(active_inds.back()) = vec_ind;
         active_inds.pop_back();
         entity2ind.at(entity_ind) = -1;
@@ -118,8 +118,10 @@ public:
         assert(entity2ind.at(entity_ind) != -1);
 
         auto vec_ind = entity2ind.at(entity_ind);
-        object2entity.at(vec_ind) = object2entity.back();
-        entity2ind.at(object2entity.back()) = vec_ind;
+        auto changed_entity_ind = object2entity.back();
+        entity2ind.at(changed_entity_ind) = vec_ind;
+
+        object2entity.at(vec_ind) = changed_entity_ind;
         object2entity.pop_back();
 
         objects.at(vec_ind) = objects.back();
@@ -130,7 +132,8 @@ public:
 
     constexpr const DataType &at(int entity_ind) const
     {
-        assert(entity_ind < MAX_OBJECTS && entity2ind.at(entity_ind) != -1);
+        assert(entity_ind < MAX_OBJECTS);
+        assert(entity2ind.at(entity_ind) != -1);
         return objects.at(entity2ind.at(entity_ind));
     }
     constexpr DataType &at(int entity_ind)

@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 
-using TriVertex = cdt::Vector2i ;
+using TriVertex = utils::Vector2i ;
 using Edge = cdt::EdgeI<TriVertex>;
 
 class MapGrid : public utils::Grid

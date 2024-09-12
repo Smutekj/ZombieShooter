@@ -20,8 +20,7 @@ void GameObject::updateAll(float dt)
         m_collision_shape->setPosition(m_pos.x, m_pos.y);
         m_collision_shape->setRotation(m_angle);
     }
-
-    update(dt);
+    m_pos += m_vel * dt;
 }
 
     void GameObject::move(utils::Vector2f by)
@@ -41,6 +40,26 @@ bool GameObject::collides() const
 const utils::Vector2f& GameObject::getPosition() const
 {
     return m_pos;
+}
+
+float GameObject::getX() const
+{
+    return m_pos.x;
+}
+
+float GameObject::getY() const
+{
+    return m_pos.y;
+}
+
+void GameObject::setY(float y)
+{
+    m_pos.y = y;
+}
+
+void GameObject::setX(float x)
+{
+    m_pos.x = x;
 }
 
 float GameObject::getAngle() const

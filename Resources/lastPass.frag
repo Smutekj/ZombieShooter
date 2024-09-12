@@ -2,7 +2,6 @@
 
 precision mediump float;    
 
-
 uniform sampler2D u_source;
 uniform float u_exposure = 2.0;
 
@@ -17,9 +16,9 @@ void main(void)
     vec3 source_color = texture(u_source, v_tex_coord).rgb;      
     float source_alpha = texture(u_source, v_tex_coord).a;
 
-    vec3 result = source_color ;
+    vec3 result = source_color;
     result = vec3(1.) - exp(-result*u_exposure);
 
 
-    FragColor = vec4(source_color, 1.0);
+    FragColor = vec4(source_color, source_alpha);
 }

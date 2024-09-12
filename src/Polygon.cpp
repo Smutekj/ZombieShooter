@@ -21,8 +21,8 @@
     std::vector<utils::Vector2f> world_points;
     for (int i = 0; i < points.size(); ++i)
     {
-      transform(points[i]);
       world_points.push_back(points[i]);
+      transform(world_points.back());
     }
     return world_points;
   }

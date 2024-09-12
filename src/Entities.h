@@ -3,6 +3,9 @@
 #include "GameObject.h"
 #include <Particles.h>
 
+#include "AILuaComponent.h"
+#include "Shadows/VisibilityField.h"
+
 class PlayerEntity : public GameObject
 {
 
@@ -16,6 +19,45 @@ public:
     virtual void onDestruction() override;
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+    private:
+    VisionField m_vision;
+    VertexArray m_vision_verts;
+};
+
+class Wall : public GameObject
+{
+
+public:
+    Wall() = default;
+    explicit Wall(TextureHolder &textures, utils::Vector2f from, utils::Vector2f to);
+    virtual ~Wall() override {}
+
+    virtual void update(float dt) override;
+    virtual void onCreation() override;
+    virtual void onDestruction() override;
+    virtual void draw(LayersHolder &layers) override;
+    virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+private:
+    utils::Vector2f getNorm()
+    {
+
+        auto points = m_collision_shape->getPointsInWorld();
+        assert(points.size() >= 2);
+        auto v0 = points.at(0);
+        auto v1 = points.at(1);
+        auto t = (v1 - v0);
+        t /= norm(t);
+        m_norm = utils::Vector2f{t.y, -t.x};
+        return m_norm;
+    }
+
+private:
+    utils::Vector2f m_norm = {0, 0};
+
+private:
+    Color m_color = {0, 1.f, 0, 1.f};
 };
 
 using ProjectileTarget = std::variant<GameObject *, utils::Vector2f>;
@@ -26,12 +68,17 @@ namespace Collisions
     class CollisionSystem;
 }
 
+namespace pathfinding
+{
+    class PathFinder;
+}
+
 class Enemy : public GameObject
 {
 
 public:
     Enemy() = default;
-    Enemy(GameWorld *world, TextureHolder &textures, Collisions::CollisionSystem &collider, PlayerEntity *player);
+    Enemy(pathfinding::PathFinder &pf, TextureHolder &textures, Collisions::CollisionSystem &collider, PlayerEntity *player);
     virtual ~Enemy() override;
 
     virtual void update(float dt) override;
@@ -41,14 +88,28 @@ public:
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
 public:
+    AIState getState() const
+    {
+        return m_state;
+    }
+public:
+    void setState(AIState state) 
+    {
+        m_state = state;
+    }
+
+public:
     float max_vel = 40.f;
     const float max_acc = 200.f;
     const float max_impulse_vel = 40.f;
 
     float m_health = 5;
     utils::Vector2f m_impulse = {0, 0};
-    utils::Vector2f m_target_pos;
-    std::vector<utils::Vector2f> m_cm;
+
+    utils::Vector2f m_next_path = {-1, -1};
+    AIState m_state = AIState::Patroling;
+
+    Color m_color = Color(20,0,0,1);
 
 private:
     void avoidMeteors();
@@ -60,10 +121,11 @@ public:
 
 private:
     float m_boid_radius = 30.f;
-    utils::Vector2f m_acc;
+    utils::Vector2f m_acc = {0,0};
 
-    PlayerEntity *m_player;
-    Collisions::CollisionSystem *m_collision_system;
+    Collisions::CollisionSystem *m_collision_system = nullptr;
+    pathfinding::PathFinder *m_pf = nullptr;
+    PlayerEntity *m_player = nullptr;
 
     bool m_is_avoiding = false;
 };
@@ -143,8 +205,7 @@ public:
 private:
     float m_orbit_speed = 2.f;
     float m_time = 0.f;
-    float m_lifetime = 5.f;
-
+    float m_lifetime = 5000000.f;
 };
 
 struct ProjectileData
@@ -152,3 +213,5 @@ struct ProjectileData
     GameObject *m_caster = nullptr;
     GameObject *m_target = nullptr;
 };
+
+

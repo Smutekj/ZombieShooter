@@ -11,10 +11,12 @@ namespace Collisions
         {
             m_object_type2tree[static_cast<ObjectType>(i)] = {};
         }
+        m_exceptions.insert({(int)ObjectType::Wall, (int)ObjectType::Wall});
     }
 
     void CollisionSystem::insertObject(std::shared_ptr<GameObject> &p_obj)
     {
+        assert(p_obj);
         auto &object = *p_obj;
         auto bounding_rect = object.getCollisionShape().getBoundingRect().inflate(1.2f);
         m_object_type2tree[object.getType()].addRect(bounding_rect, object.getId());
@@ -57,7 +59,10 @@ namespace Collisions
             auto &tree_i = m_object_type2tree.at(static_cast<ObjectType>(i));
             for (int j = i; j < static_cast<int>(ObjectType::Count); ++j)
             { //! for all pairs of object trees;
-
+                if(m_exceptions.count({i,j}) > 0)
+                {
+                    continue;
+                }
                 auto &tree_j = m_object_type2tree.at(static_cast<ObjectType>(j));
 
                 auto close_pairs = tree_i.findClosePairsWith(tree_j);
@@ -116,7 +121,7 @@ namespace Collisions
         }
 
         auto col_feats1 = obtainFeatures(c_data.separation_axis, points_a);
-        auto col_feats2 = obtainFeatures(-1.f*c_data.separation_axis, points_b);
+        auto col_feats2 = obtainFeatures(-1.f * c_data.separation_axis, points_b);
 
         auto clipped_edge = clipEdges(col_feats1, col_feats2, c_data.separation_axis);
         if (clipped_edge.size() == 0) //! clipping failed so we don't do collision
@@ -177,7 +182,7 @@ namespace Collisions
                 utils::Vector2f r2 = points.at(next);
 
                 utils::Vector2f segment_intersection;
-                if (utils::segmentsIntersect(r1, r2, at, at + dir * length,segment_intersection))
+                if (utils::segmentsIntersect(r1, r2, at, at + dir * length, segment_intersection))
                 {
                     auto new_dist = dist(segment_intersection, at);
                     if (new_dist < min_dist)
@@ -214,6 +219,10 @@ namespace Collisions
 
             auto t1 = points1[next] - points1[curr]; //! line perpendicular to current polygon edge
             utils::Vector2f n1 = {t1.y, -t1.x};
+            if (utils::approx_equal_zero(norm2(n1)))
+            {
+                continue;
+            }
             n1 /= norm(n1);
             auto proj1 = projectOnAxis(n1, points1);
             auto proj2 = projectOnAxis(n1, points2);
@@ -226,6 +235,10 @@ namespace Collisions
             else
             {
                 auto overlap = calcOverlap(proj1, proj2);
+                if (utils::approx_equal_zero(overlap))
+                {
+                    continue;
+                }
                 if (overlap < min_overlap)
                 {
                     min_overlap = overlap;
@@ -245,9 +258,13 @@ namespace Collisions
 
             auto t1 = points2[next] - points2[curr]; //! line perpendicular to current polygon edge
             utils::Vector2f n1 = {t1.y, -t1.x};
+            if (utils::approx_equal_zero(norm2(n1)))
+            {
+                continue;
+            }
             n1 /= norm(n1);
-            auto proj1 = projectOnAxis(n1, points1);
             auto proj2 = projectOnAxis(n1, points2);
+            auto proj1 = projectOnAxis(n1, points1);
 
             if (!overlap1D(proj1, proj2))
             {
@@ -257,6 +274,10 @@ namespace Collisions
             else
             {
                 auto overlap = calcOverlap(proj1, proj2);
+                if (utils::approx_equal_zero(overlap))
+                {
+                    continue;
+                }
                 if (overlap < min_overlap)
                 {
                     min_overlap = overlap;
@@ -347,7 +368,7 @@ namespace Collisions
         return cp;
     }
 
-    std::vector<utils::Vector2f>inline clipEdges(CollisionFeature &ref_features, CollisionFeature &inc_features, utils::Vector2f n)
+    std::vector<utils::Vector2f> inline clipEdges(CollisionFeature &ref_features, CollisionFeature &inc_features, utils::Vector2f n)
     {
 
         auto &ref_edge = ref_features.edge;
@@ -408,8 +429,8 @@ namespace Collisions
 
     void inline bounce(GameObject &obj1, GameObject &obj2, CollisionData c_data)
     {
-        auto& rigid1 = obj1.getRigidBody();
-        auto& rigid2 = obj2.getRigidBody();
+        auto &rigid1 = obj1.getRigidBody();
+        auto &rigid2 = obj2.getRigidBody();
 
         auto inertia1 = rigid1.inertia;
         auto inertia2 = rigid2.inertia;
@@ -419,11 +440,11 @@ namespace Collisions
         auto &mass2 = rigid2.mass;
 
         auto n = c_data.separation_axis;
-        
+
         //! resolve interpenetration;
         float alpha = mass2 / (mass1 + mass2);
-        obj1.move(-c_data.separation_axis * c_data.minimum_translation*alpha); //! separation axis always points from 1 to 2
-        obj2.move(c_data.separation_axis * c_data.minimum_translation * (1-alpha));
+        obj1.move(-c_data.separation_axis * c_data.minimum_translation * alpha); //! separation axis always points from 1 to 2
+        obj2.move(c_data.separation_axis * c_data.minimum_translation * (1 - alpha));
 
         auto cont_point = c_data.contact_point;
 

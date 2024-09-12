@@ -15,7 +15,7 @@ class EnviromentEffect : public GameObject
 
 public:
     EnviromentEffect() = default;
-    EnviromentEffect(TextureHolder &textures, ObjectType type);
+    EnviromentEffect(TextureHolder &textures);
     virtual ~EnviromentEffect() override {}
 
     virtual void update(float dt) = 0;
@@ -31,12 +31,12 @@ class FireEffect : public EnviromentEffect
 {
 
 public:
-    FireEffect(TextureHolder &textures);
+    FireEffect(ShaderHolder &shaders,TextureHolder &textures);
     virtual ~FireEffect() = default;
 
     void setEdgeColor(Color new_color);
     virtual void draw(LayersHolder &layers) override;
-    virtual void update(float dt) override{}
+    virtual void update(float dt) override;
     virtual void onCreation() override{}
     virtual void onDestruction() override{}
 
@@ -56,7 +56,7 @@ class Water : public EnviromentEffect
 {
 
 public:
-    Water(ShaderHolder &shaders, LayersHolder &layers);
+    Water(ShaderHolder &shaders, TextureHolder& textures);
     virtual ~Water() = default;
 
     virtual void draw(LayersHolder &layers) override;

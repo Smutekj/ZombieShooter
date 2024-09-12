@@ -1,6 +1,8 @@
 #include "Entities.h"
 #include "CollisionSystem.h"
+#include "GameWorld.h"
 #include "Utils/RandomTools.h"
+#include "PathFinding/PathFinder.h"
 
 #include <Utils/Vector2.h>
 #include <Particles.h>
@@ -15,33 +17,144 @@ extern "C"
 };
 #endif //__cplusplus
 
+#include <spdlog/spdlog.h>
+#include <spdlog/cfg/env.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
+#include "LuaWrapper.h"
 #include <LuaBridge/LuaBridge.h>
 
-PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
-    : GameObject(world, textures, ObjectType::Player)
+namespace cdt
 {
+    template class Triangulation<utils::Vector2f>;
+}
+
+static float dir2angle(utils::Vector2f dir)
+{
+    return 180.f * std::atan2(dir.y, dir.x) / M_PIf;
+}
+
+void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color)
+{
+    auto &canvas = layers.getCanvas("Unit");
+
+    float thickness = radius / 10.f;
+
+    utils::Vector2f prev_pos = pos + utils::Vector2f{radius, 0};
+    for (int i = 1; i < 51; ++i)
+    {
+        float x = pos.x + radius * std::cos(i / 50. * 2. * M_PIf);
+        float y = pos.y + radius * std::sin(i / 50. * 2. * M_PIf);
+        canvas.drawLineBatched(prev_pos, {x, y}, thickness, color, GL_DYNAMIC_DRAW);
+        prev_pos = {x, y};
+    }
+    utils::Vector2f left_eye_pos1 = pos + utils::Vector2f{-radius * 0.2, radius * 0.4};
+    utils::Vector2f left_eye_pos2 = pos + utils::Vector2f{-radius * 0.6, radius * 0.5};
+    utils::Vector2f right_eye_pos1 = pos + utils::Vector2f{+radius * 0.2, radius * 0.4};
+    utils::Vector2f right_eye_pos2 = pos + utils::Vector2f{+radius * 0.6, radius * 0.5};
+    canvas.drawLineBatched(left_eye_pos1, left_eye_pos2, thickness / 2.f, color, GL_DYNAMIC_DRAW);
+    canvas.drawLineBatched(right_eye_pos1, right_eye_pos2, thickness / 2.f, color, GL_DYNAMIC_DRAW);
+    // canvas.drawCricleBatched(, 1.0, color, GL_DYNAMIC_DRAW);
+}
+
+PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
+    : GameObject(world, textures, ObjectType::Player),
+      m_vision(world->getTriangulation()),
+      m_vision_verts(world->m_shaders.get("VisionLight"))
+{
+    m_collision_shape = std::make_unique<Polygon>(4);
+    setSize({6.f, 6.f});
 }
 
 void PlayerEntity::update(float dt)
 {
-    m_pos += m_vel * dt;
+    utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
+    m_vision.contrstuctField(asFloat(m_pos), asFloat(m_look_dir));
 }
 void PlayerEntity::onCreation()
 {
-    
 }
 void PlayerEntity::onDestruction() {}
 void PlayerEntity::draw(LayersHolder &layers)
 {
-    auto &target_canvas = layers.getCanvas("Unit");
-    Sprite2 player_sprite(*m_textures->get("bomb"));
-    player_sprite.setPosition(m_pos);
-    player_sprite.setScale(m_size);
-    player_sprite.setRotation(m_angle);
-    target_canvas.drawSprite(player_sprite, "Instanced", GL_DYNAMIC_DRAW);
+
+    drawAgent(m_pos, m_size.x * 2.f, layers, {0, 0, 25, 1});
+
+    auto &light_canvas = layers.getCanvas("Light");
+    auto &shader = light_canvas.getShader("VisionLight");
+    shader.use();
+    shader.setUniform2("u_posx", m_pos.x);
+    shader.setUniform2("u_posy", m_pos.y);
+    m_vision.getDrawVertices(shader, m_vision_verts);
+    for (int vert_ind = 0; vert_ind < m_vision_verts.size(); ++vert_ind)
+    {
+        const auto &pos = m_vision_verts[vert_ind].pos;
+        auto dr = pos - m_pos;
+        m_vision_verts[vert_ind].tex_coord = {dr}; //! we use this information in a shader
+    }
+    light_canvas.drawVertices(m_vision_verts, GL_DYNAMIC_DRAW);
+
+    // light_canvas.drawCricleBatched(m_pos + m_vel*2.f, 50.f, Color{100,0,1,1.0});
 }
+
 void PlayerEntity::onCollisionWith(GameObject &obj, CollisionData &c_data) {
 
+};
+
+Wall::Wall(TextureHolder &textures, utils::Vector2f from, utils::Vector2f to)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Wall)
+{
+    m_collision_shape = std::make_unique<Polygon>(2);
+    m_collision_shape->points.at(0) = {-0.5f, 0.f};
+    m_collision_shape->points.at(1) = {0.5f, 0.f};
+    // m_collision_shape->points.at(2) = {-0.5f, 0.f};
+    auto dr = from - to;
+    auto angle = dir2angle(dr);
+    auto length = dist(from, to);
+    setPosition((from + to) / 2.f);
+    setAngle(angle);
+    setSize({length, 1.f});
+}
+
+void Wall::update(float dt)
+{
+}
+void Wall::onCreation()
+{
+}
+void Wall::onDestruction() {}
+void Wall::draw(LayersHolder &layers)
+{
+    auto &canvas = layers.getCanvas("Wall");
+
+    auto points = m_collision_shape->getPointsInWorld();
+    assert(points.size() >= 2);
+    auto v0 = points.at(0);
+    auto v1 = points.at(1);
+    canvas.drawLineBatched(v1, v0, 1.0, m_color);
+
+    // auto norm = getNorm();
+    // canvas.drawLineBatched(getPosition(), getPosition() + 5.f*norm, 1., {1,0,0,1});
+}
+void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
+{
+
+    if (obj.getType() == ObjectType::Player || obj.getType() == ObjectType::Enemy)
+    {
+        auto &v = obj.m_vel;
+        auto pos = obj.getPosition();
+        auto norm = getNorm();
+        auto n_dot_v = dot(v, norm);
+        if (n_dot_v >= 0)
+        {
+            v -= n_dot_v * norm;
+            m_color = Color{20, 1, 0, 1};
+        }
+    }
+    if (obj.getType() == ObjectType::Bullet)
+    {
+        obj.kill();
+    }
 };
 
 Projectile::Projectile(GameWorld *world, TextureHolder &textures)
@@ -53,7 +166,7 @@ Projectile::Projectile(GameWorld *world, TextureHolder &textures)
         [this](auto pos)
         {
             Particle p;
-            p.pos = pos + m_size.x * utils::Vector2f{std::cos(randf(2 * M_PIf)), std::sin(randf(2 * M_PIf))} - m_vel;
+            p.pos = pos + m_size.x / 2.f * utils::Vector2f{std::cos(randf(2 * M_PIf)), std::sin(randf(2 * M_PIf))} - m_vel / norm(m_vel) * m_size.x / 2.f;
             p.vel = {-m_vel.y, m_vel.x};
             p.vel *= (2. * randf() - 1.) / norm(m_vel) / 33.69f;
             return p;
@@ -67,18 +180,21 @@ Projectile::Projectile(GameWorld *world, TextureHolder &textures)
     m_bolt_particles.setLifetime(2.f);
     m_bolt_particles.setRepeat(true);
     setTarget(utils::Vector2f{0, 0});
+
+    m_collision_shape = std::make_unique<Polygon>(8);
+    setSize({5.f, 5.f});
 }
 
-void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data) {
-
+void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
+{
+    auto type = obj.getType();
+    if (type == ObjectType::Enemy)
+    {
+        static_cast<Enemy &>(obj).m_health--;
+    }
 };
 void Projectile::onCreation()
 {
-}
-
-static float dir2angle(utils::Vector2f dir)
-{
-    return 180.f * std::atan2(dir.y, dir.x) / M_PIf;
 }
 
 std::shared_ptr<Font> m_font = nullptr;
@@ -96,7 +212,7 @@ void Projectile::draw(LayersHolder &layers)
 
     auto &canvas = layers.getCanvas("Unit");
 
-    Text name("GayMaster");
+    Text name("Test");
     name.setFont(m_font);
     name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
     canvas.drawText(name, "Instanced", GL_DYNAMIC_DRAW);
@@ -142,7 +258,6 @@ void Projectile::update(float dt)
     auto dv = (dr / norm(dr) - m_vel / norm(m_vel));
     m_vel += dv * 0.5f;
     m_vel *= 50. / norm(m_vel);
-    m_pos += m_vel * dt;
     setPosition(m_pos);
 
     m_time += dt;
@@ -152,12 +267,12 @@ void Projectile::update(float dt)
     }
 }
 
-Enemy::Enemy(GameWorld *world, TextureHolder &textures,
+Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
              Collisions::CollisionSystem &collider, PlayerEntity *player)
-    : m_collision_system(&collider), m_player(player), GameObject(world, textures, ObjectType::Enemy)
+    : m_collision_system(&collider), m_pf(&pf), m_player(player), GameObject(&GameWorld::getWorld(), textures, ObjectType::Enemy)
 {
     m_collision_shape = std::make_unique<Polygon>(4);
-    m_collision_shape->setScale(4.f, 4.f);
+    setSize({10.f, 10.f});
     // m_target_pos = player->getPosition();
 }
 
@@ -174,14 +289,69 @@ inline void truncate(utils::Vector2f &vec, float max_value)
 
 void Enemy::update(float dt)
 {
+
+    auto lua = LuaWrapper::getSingleton();
+    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/basicai.lua");
+    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "UpdateAI");
+    if (processFunc.isFunction())
+    {
+        try
+        {
+            processFunc(static_cast<GameObject *>(this));
+        }
+        catch (std::exception e)
+        {
+            std::cout << e.what() << " !\n";
+        }
+    }
+
+    if (m_target)
+    {
+        if (m_target->isDead())
+        {
+            m_target = nullptr;
+            m_target_pos = {-1, -1};
+        }
+        m_target_pos = m_target->getPosition();
+
+        auto dist2target = dist(m_target_pos, m_pos);
+        if (dist2target < 500 && m_state != AIState::Attacking)
+        {
+
+            m_state = AIState::Attacking;
+        }
+        else
+        {
+            m_state = AIState::Chasing;
+        }
+    }
+    else
+    {
+        m_state = AIState::Patroling;
+    }
+
+    if (m_pf && m_target_pos.x > 0)
+    {
+        if (utils::norm2(m_target_pos - m_pos) <= 500 * 500 && m_state == AIState::Chasing)
+        {
+            // m_color = Color(0, 26, 1, 1);
+            auto path_data = m_pf->doPathFinding({m_pos.x, m_pos.y}, {m_target_pos.x, m_target_pos.y}, m_size.x);
+            m_next_path = path_data.path.at(1);
+        }
+        else
+        {
+            // m_color = Color(20, 0, 0, 1);
+        }
+    }
+
     boidSteering();
-    avoidMeteors();
+    // avoidMeteors();
 
     truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
 
     truncate(m_vel, max_vel);
-    m_pos += (m_vel + m_impulse) * dt;
+    m_pos += (m_impulse)*dt;
     if (m_health < 0.f)
     {
         kill();
@@ -210,19 +380,9 @@ void Enemy::onDestruction()
 {
 }
 
-void Enemy::draw(LayersHolder& layers)
+void Enemy::draw(LayersHolder &layers)
 {
-    auto& unit_canvas = layers.getCanvas("Unit");
-
-    Sprite2 rect(*m_textures->get("bomb"));
-
-    rect.setPosition(m_pos);
-    rect.setRotation(dir2angle(m_vel));
-    rect.setScale(m_size*2.f);
-    // if(m_is_avoiding){ rect.setFillColor(sf::Color::Red);}
-
-    unit_canvas.drawSprite(rect, "Instanced", GL_DYNAMIC_DRAW);
-
+    drawAgent(m_pos, m_size.x, layers, m_color);
 
     // for(auto pos : m_cm)
     // {
@@ -238,7 +398,6 @@ void Enemy::draw(LayersHolder& layers)
 
 void Enemy::avoidMeteors()
 {
-
 }
 
 std::unordered_map<Multiplier, float> Enemy::m_force_multipliers = {
@@ -312,7 +471,7 @@ void Enemy::boidSteering()
 
     dr_nearest_neighbours /= n_neighbours;
 
-    if (n_neighbours > 0 && norm2(dr_nearest_neighbours) >= 0.00001f)
+    if (n_neighbours > 0 && !utils::approx_equal_zero(norm2(dr_nearest_neighbours)))
     {
         scatter_force += -scatter_multiplier * dr_nearest_neighbours / norm(dr_nearest_neighbours) - m_vel;
     }
@@ -329,39 +488,37 @@ void Enemy::boidSteering()
         align_force = align_multiplier * align_direction / norm(align_direction) - m_vel;
     }
 
-    auto dr_to_target = m_target_pos - m_pos;
-    if (norm(dr_to_target) > 3.f)
+    if (m_state != AIState::Attacking)
     {
-        seek_force = seek_multiplier * max_vel * dr_to_target / norm(dr_to_target) - m_vel;
+        auto dr_to_target = m_next_path - m_pos;
+        if (norm(dr_to_target) > 3.f)
+        {
+            seek_force = seek_multiplier * max_vel * dr_to_target / norm(dr_to_target) - m_vel;
+        }
     }
 
     m_acc += (scatter_force + align_force + seek_force + cohesion_force);
     truncate(m_acc, max_acc);
 }
 
-
-    OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
+OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
     : GameObject(world, textures, ObjectType::Orbiter)
-    {
-
-    }
-
+{
+}
 
 void OrbitingShield::update(float dt)
 {
     m_time += dt;
-    float orbit_angle =180.* m_time * m_orbit_speed;
-    m_transform.setPosition(50.f*utils::angle2dir(orbit_angle));
-    if(m_time > m_lifetime)
+    float orbit_angle = 180. * m_time * m_orbit_speed;
+    m_transform.setPosition(50.f * utils::angle2dir(orbit_angle));
+    if (m_time > m_lifetime)
     {
         kill();
     }
-    
 }
 
 void OrbitingShield::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
-
 }
 
 void OrbitingShield::onCreation()
@@ -371,17 +528,15 @@ void OrbitingShield::onDestruction()
 {
 }
 
-void OrbitingShield::draw(LayersHolder& layers)
+void OrbitingShield::draw(LayersHolder &layers)
 {
-    auto& unit_canvas = layers.getCanvas("Unit");
+    auto &unit_canvas = layers.getCanvas("Unit");
 
     Sprite2 rect(*m_textures->get("bomb"));
     rect.m_texture_handles[0] = 0;
     rect.setPosition(m_pos);
     rect.setRotation(dir2angle(m_vel));
-    rect.setScale(m_size*2.f);
+    rect.setScale(m_size * 2.f);
 
     unit_canvas.drawSprite(rect, "lightning", GL_DYNAMIC_DRAW);
-
-
 }

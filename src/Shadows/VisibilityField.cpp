@@ -2,9 +2,9 @@
 
 #include <numbers>
 
-#ifndef M_PIf 
+#ifndef M_PIf
 #define M_PIf std::numbers::pi_v<float>
-#endif 
+#endif
 
 VisionField::VisionField(cdt::Triangulation<cdt::Vector2i> &cdt) : m_cdt(cdt) {}
 
@@ -12,7 +12,6 @@ static float dir2angle(const cdt::Vector2f &dir)
 {
     return std::atan2(dir.y, dir.x) * 180.f / M_PIf;
 }
-
 
 bool VisionField::isVisible(cdt::Vector2f query) const
 {
@@ -62,7 +61,10 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
 
     const auto &triangles = m_cdt.m_triangles;
     auto start_tri_ind = m_cdt.findTriangle(from, false);
-
+    if(start_tri_ind < 0 || start_tri_ind >= triangles.size())
+    {
+        return;
+    }
     std::vector<Walker> to_visit;
     auto &curr_tri = triangles.at(start_tri_ind);
 
@@ -250,9 +252,8 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
     }
 }
 
-VertexArray VisionField::getDrawVertices(Shader &shader) const
+void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color color) const
 {
-
     auto from = m_center;
     auto angle_dist_cond = [from](VisionCone &r1, VisionCone &r2)
     {
@@ -263,22 +264,36 @@ VertexArray VisionField::getDrawVertices(Shader &shader) const
     // std::sort(m_vision.begin(), m_vision.end(), angle_dist_cond);
     int n_rays = m_vision.size();
 
-    VertexArray vertices(shader);
     vertices.resize(3 * n_rays);
     vertices.m_primitives = GL_TRIANGLES;
 
+    float max_alpha = 1.0;
+    float min_alpha = 0.0;
+    float max_radius = 20.f;
+    auto calcAlpha = [max_radius, max_alpha, min_alpha](const float radius) -> float
+    {
+        if (radius > max_radius)
+        {
+            return min_alpha;
+        }
+        return min_alpha + (max_alpha - min_alpha) * (radius / max_radius);
+    };
+
+
     Vertex center_vert;
     center_vert.pos = {from.x, from.y};
-    center_vert.color = Color(1,1,1,1);
+    center_vert.color = Color(color.r, color.g, color.b, max_alpha);
     for (int i = 0; i < n_rays; ++i)
     {
         vertices[3 * i + 0] = center_vert;
 
+        float dist_to_center_left = cdt::dist(asFloat(center_vert.pos), m_vision[i].left);
+        float dist_to_center_right = cdt::dist(asFloat(center_vert.pos), m_vision[i].right);
+
         vertices[3 * i + 1].pos = {m_vision[i].left.x, m_vision[i].left.y};
-        vertices[3 * i + 1].color = Color(1, 1, 1, 1);
+        vertices[3 * i + 1].color = Color(color.r, color.g, color.b, calcAlpha(dist_to_center_left));
 
         vertices[3 * i + 2].pos = {m_vision[i].right.x, m_vision[i].right.y};
-        vertices[3 * i + 2].color = Color(1, 1, 1, 1);
+        vertices[3 * i + 2].color = Color(color.r, color.g, color.b, calcAlpha(dist_to_center_right));
     }
-    return vertices;
 }

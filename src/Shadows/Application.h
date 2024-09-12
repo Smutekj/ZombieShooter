@@ -56,7 +56,7 @@
 
 //     float m_light_color[3] = {1, 1, 1};
 
-//     cdt::Triangulation<cdt::Vector2i> m_cdt;
+//     cdt::Triangulation<utils::Vector2i> m_cdt;
 //     MapGrid m_map;
 //     VisionField m_vision;
 // };

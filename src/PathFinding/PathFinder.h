@@ -19,9 +19,10 @@ struct Portal {
 //! \note first and last element of portals should be one singular point with left == right
 typedef std::deque<Portal> Funnel;
 
+namespace pathfinding{
 
 using namespace cdt;
-using Vertex = cdt::Vector2i;
+using Vertex = Vector2i;
 
 struct Edgef
 {
@@ -134,3 +135,5 @@ private:
 
     std::vector<TriInd> tri_ind2component_; //! This will be used for identifying buldings
 };
+
+};//! namespace pathfinding

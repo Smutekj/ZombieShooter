@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Utils/ObjectPool.h"
 #include <Grid.h>
+#include <Triangulation.h>
 
 #include <unordered_map>
 #include <functional>
@@ -11,7 +11,18 @@
 #include <boost/mp11/algorithm.hpp>
 
 #include "CollisionSystem.h"
+#include "PathFinding/PathFinder.h"
+#include "Utils/ObjectPool.h"
+#include "Enviroment.h"
 // #include "GridNeighbourSearcher.h"
+
+namespace map
+{
+    constexpr int MAP_SIZE_X = 2000;
+    constexpr int MAP_SIZE_Y = 2000;
+    constexpr int MAP_GRID_CELLS_X = 50;
+    constexpr int MAP_GRID_CELLS_Y = MAP_GRID_CELLS_X;
+} //! namespace map
 
 class Renderer;
 
@@ -120,7 +131,7 @@ struct ObjectIdentifier
     std::string name;
 };
 
-class SceneGraph
+struct SceneGraph
 {
 public:
     SceneGraph()
@@ -138,7 +149,7 @@ public:
     void updateRoot(int root_ind)
     {
         auto &root = m_nodes.at(root_ind);
-        root.p_object->updateAll(0.01f);
+        root.p_object->update(0.01f);
         std::queue<int> to_visit;
         for (auto &child : root.children)
         {
@@ -160,7 +171,7 @@ public:
             auto parent_pos = parent_obj->getPosition();
             curr_node.p_object->m_transform.transform(parent_pos);
             curr_node.p_object->setPosition(parent_pos);
-            curr_node.p_object->updateAll(0.01f);
+            curr_node.p_object->update(0.01f);
         }
     }
 
@@ -301,7 +312,7 @@ public:
         return true;
     }
 
-private:
+public:
     utils::DynamicObjectPool<SceneNode, 5000> m_nodes;
     std::unordered_map<int, int> m_obj_map;
     std::unordered_set<int> m_roots;
@@ -312,6 +323,13 @@ struct NewObjectData
     std::shared_ptr<GameObject> p_object = nullptr;
     std::string name = "DefaultName";
     int parent = -1;
+};
+
+constexpr int N_MAX_ENTITIES = 10000;
+
+namespace spdlog
+{
+    class logger;
 };
 
 class GameWorld
@@ -334,11 +352,16 @@ public:
     std::shared_ptr<GameObject> addObject(ObjectType type, std::string name, int parent_id = -1);
     std::shared_ptr<GameObject> addObject(std::string type, std::string name, int parent_id = -1);
 
+    template <class EntityType, class... Args>
+    std::shared_ptr<EntityType> addObject(const std::string name, Args... args);
+
     template <class TriggerType, class... Args>
     TriggerType &addTrigger(Args... args);
 
     template <class EffectType, class... Args>
     EffectType &addVisualEffect(const std::string name, Args &&...args);
+
+    std::shared_ptr<EnviromentEffect> addEffect(std::string obj_type_text, std::string name, int parent_id = -1);
 
     void update(float dt);
     void draw(LayersHolder &layers);
@@ -347,10 +370,24 @@ public:
     void removeEntityCallback(EntityEventType type, int callback_id);
 
     int getIdOf(const std::string &name) const;
+    const std::string getName(int entity_id) const;
+    bool setName(int entity_id, std::string new_name);
     std::shared_ptr<GameObject> get(int entity_id) const;
-    std::shared_ptr<GameObject> get(const std::string &name) const;
+    std::shared_ptr<GameObject> get(const std::string name) const;
     template <class EntityType>
     std::shared_ptr<EntityType> get(const std::string &name) const;
+
+    bool kill(const std::string name);
+    cdt::Triangulation<cdt::Vector2i> &getTriangulation()
+    {
+        assert(m_cdt);
+        return *m_cdt;
+    }
+    pathfinding::PathFinder &getPathFinder()
+    {
+        assert(m_pathfinder);
+        return *m_pathfinder;
+    }
 
 private:
     void addQueuedEntities();
@@ -359,22 +396,28 @@ private:
 
 public:
     SceneGraph m_scene;
+    ShaderHolder m_shaders;
 
 private:
     EntityEvent m_entity_destroyed_subject;
     EntityEvent m_entity_created_subject;
-    utils::DynamicObjectPool<std::shared_ptr<GameObject>, 2000> m_entities;
+    utils::DynamicObjectPool<std::shared_ptr<GameObject>, N_MAX_ENTITIES> m_entities;
 
     std::unordered_map<std::string, int> m_name2id;
+    std::unordered_map<int, std::string> m_id2name;
 
     // std::unique_ptr<GridNeighbourSearcher> m_neighbour_searcher;
     Collisions::CollisionSystem m_collision_system;
+    std::shared_ptr<cdt::Triangulation<cdt::Vector2i>> m_cdt = nullptr;
+    std::shared_ptr<pathfinding::PathFinder> m_pathfinder = nullptr;
 
     std::queue<NewObjectData> m_to_add;
     std::queue<NewObjectData> m_to_destroy;
 
     TextureHolder m_textures;
     PlayerEntity *m_player;
+
+    std::shared_ptr<spdlog::logger> m_logger;
 };
 
 template <class TriggerType, class... Args>
@@ -390,10 +433,22 @@ EffectType &GameWorld::addVisualEffect(const std::string name, Args &&...args)
 {
     // static_assert(std::is_base_of_v<EnviromentEffect, EffectType>());
     NewObjectData new_obj;
-    auto ptr_obj = std::make_shared<EffectType>(args...);
+    auto ptr_obj = std::make_shared<EffectType>(m_shaders, m_textures, args...);
     new_obj.p_object = ptr_obj;
     new_obj.name = name;
     new_obj.parent = -1;
     m_to_add.push(new_obj);
     return *ptr_obj;
+}
+template <class EntityType, class... Args>
+std::shared_ptr<EntityType> GameWorld::addObject(const std::string name, Args... args)
+{
+    // static_assert(std::is_base_of_v<EnviromentEffect, EffectType>());
+    NewObjectData new_obj;
+    auto ptr_obj = std::make_shared<EntityType>(m_textures, args...);
+    new_obj.p_object = ptr_obj;
+    new_obj.name = name;
+    new_obj.parent = -1;
+    m_to_add.push(new_obj);
+    return ptr_obj;
 }

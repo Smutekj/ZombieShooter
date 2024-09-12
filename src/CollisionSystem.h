@@ -66,6 +66,7 @@ namespace Collisions
         };
 
         std::unordered_set<std::pair<int, int>, pair_hash> m_collided;
+        std::unordered_set<std::pair<int, int>, pair_hash> m_exceptions;
 
     public:
         CollisionSystem();

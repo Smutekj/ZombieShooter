@@ -102,7 +102,7 @@
 
 //     PathFinder::PathData m_path;
 
-//     cdt::Triangulation<cdt::Vector2i> m_cdt;
+//     cdt::Triangulation<utils::Vector2i> m_cdt;
 //     PathFinder m_pf;
 //     MapGridDiagonal m_map;
 // };

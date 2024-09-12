@@ -236,7 +236,7 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
             {
                 is_scanning_left = false;
                 vr_up = cell2coords(ix, iy);
-                edges.push_back({vl_up, vr_up});
+                edges.push_back({vr_up, vl_up});
             }
             if (!is_scanning_left && isWall(Direction::Left, ix, iy))
             {
@@ -248,7 +248,7 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
             {
                 is_scanning_right = false;
                 vr_down = cell2coords(ix+1, iy);
-                edges.push_back({vr_down, vl_down});
+                edges.push_back({vl_down, vr_down});
             }
             if (!is_scanning_right && isWall(Direction::Right, ix, iy))
             {
@@ -274,7 +274,7 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
             {
                 is_scanning_down = false;
                 vr_up = cell2coords(ix, iy);
-                edges.push_back({vl_up, vr_up});
+                edges.push_back({vr_up, vl_up});
             }
             if (!is_scanning_down && isWall(Direction::LeftDown, ix, iy))
             {
@@ -286,7 +286,7 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
             {
                 is_scanning_up = false;
                 vr_down = cell2coords(ix, iy);
-                edges.push_back({vr_down, vl_down});
+                edges.push_back({vl_down, vr_down});
             }
             if (!is_scanning_up && isWall(Direction::RightUp, ix, iy))
             {

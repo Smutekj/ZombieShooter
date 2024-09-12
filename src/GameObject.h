@@ -33,6 +33,7 @@ enum class ObjectType
     Enemy,
     Bullet,
     Player,
+    Wall,
     Orbiter,
     VisualEffect,
     Count
@@ -86,6 +87,10 @@ public:
     void updateAll(float dt);
 
     const utils::Vector2f &getPosition() const;
+    void setX(float x) ;
+    void setY(float y) ;
+    float getX() const;
+    float getY() const;
     void setPosition(utils::Vector2f new_position);
     void move(utils::Vector2f by);
 
@@ -106,6 +111,10 @@ public:
 
 public:
 
+    utils::Vector2f m_pos;
+    utils::Vector2f m_target_pos;
+    GameObject* m_target = nullptr;
+    
     int m_id;
     Transform m_transform;
     utils::Vector2f m_vel = {0, 0};
@@ -118,7 +127,6 @@ protected:
     std::unique_ptr<Polygon> m_collision_shape = nullptr;
     std::unique_ptr<RigidBody> m_rigid_body = nullptr;
     
-    utils::Vector2f m_pos;
     utils::Vector2f m_size = {1, 1};
     float m_angle = 0;
     

@@ -36,7 +36,7 @@ class Bloom2 : public PostEffect
 {
 
 public:
-    Bloom2(int width, int height);
+    Bloom2(int width, int height, TextureOptions options = {});
 
     virtual void process(Texture &source, Renderer &target) override;
     virtual ~Bloom2() = default;
@@ -67,10 +67,43 @@ public:
     }
 
 private:
-    FrameBuffer m_bloom_pass1;
-    FrameBuffer m_bloom_pass2;
     FrameBuffer m_downsampled_pixels3;
     FrameBuffer m_downsampled_pixels33;
+
+    std::vector<FrameBuffer> m_mips;
+
+    Renderer m_downsampler3;
+    Renderer m_downsampler33;
+};
+
+class SmoothLight : public PostEffect
+{
+
+public:
+    SmoothLight(int width, int height, TextureOptions options = {});
+
+    virtual void process(Texture &source, Renderer &target) override;
+    virtual ~SmoothLight() = default;
+
+    struct TexMip
+    {
+        TexMip(int width, int height)
+            : m_pixels(width, height), m_pixels2(width, height), m_canvas(m_pixels), m_canvas2(m_pixels2)
+        {
+        }
+
+        FrameBuffer m_pixels;
+        FrameBuffer m_pixels2;
+        Renderer m_canvas;
+        Renderer m_canvas2;
+    };
+
+
+private:
+    FrameBuffer m_bloom_pass1;
+    FrameBuffer m_bloom_pass2;
+    FrameBuffer m_downsampled_pixels33;
+    FrameBuffer m_downsampled_pixels3;
 
     std::vector<FrameBuffer> m_mips;
 

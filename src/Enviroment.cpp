@@ -6,14 +6,14 @@
 #include "Utils/RandomTools.h"
 
 
-EnviromentEffect::EnviromentEffect(TextureHolder& textures, ObjectType type)
-: GameObject(&GameWorld::getWorld(), textures, type)
+EnviromentEffect::EnviromentEffect(TextureHolder& textures)
+: GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
 {
 
 }
 
-FireEffect::FireEffect(TextureHolder& textures)
-    : m_smoke(200), m_fire(200), EnviromentEffect(textures, ObjectType::VisualEffect)
+FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder& textures)
+    : m_smoke(200), m_fire(200), EnviromentEffect(textures)
 {
     m_smoke.setInitColor(m_smoke_color);
     m_smoke.setFinalColor(m_smoke_edge_color);
@@ -56,6 +56,11 @@ FireEffect::FireEffect(TextureHolder& textures)
     m_fire.setRepeat(true);
 }
 
+void FireEffect::update(float dt)
+{
+    m_transform.setPosition(50.f * utils::angle2dir(50));
+}
+
 void FireEffect::setEdgeColor(Color new_color)
 {
     m_fire_edge_color = new_color;
@@ -65,6 +70,7 @@ void FireEffect::draw(LayersHolder &layers)
 {
     auto &smoke_canvas = layers.getCanvas("Smoke");
     auto &fire_canvas = layers.getCanvas("Fire");
+    auto &light_canvas = layers.getCanvas("Light");
 
     auto position = getPosition();
     m_smoke.setSpawnPos({position.x, position.y + 10}); //! smoke starts slightly above fire
@@ -73,10 +79,12 @@ void FireEffect::draw(LayersHolder &layers)
     m_fire.setSpawnPos(position);
     m_fire.update(0.01f);
     m_fire.draw(fire_canvas);
+
+    light_canvas.drawCricleBatched(m_pos, 100.f, {2,1,1,1});
 }
 
-Water::Water(ShaderHolder &shaders, LayersHolder &layers)
-    : m_water_verts(shaders.get("Water"))
+Water::Water(ShaderHolder &shaders, TextureHolder& textures)
+    : m_water_verts(shaders.get("Water")), EnviromentEffect(textures)
 {
 }
 void Water::setColor(Color new_color)

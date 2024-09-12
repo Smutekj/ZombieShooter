@@ -22,7 +22,6 @@
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
-
 UIWindow::UIWindow(std::string name) : name(name)
 {
 }
@@ -69,16 +68,19 @@ ShadersWindow::ShadersWindow(TextureHolder &textures, LayersHolder &layers, Rend
     {
         m_slots.emplace_back(*l_ptr);
     }
-    for (auto &[id, shader] : window_canvas.getShaders().getShaders())
+    for (auto &[id, shader] : GameWorld::getWorld().m_shaders.getShaders())
     {
         m_shader_slots.emplace_back(*shader, id);
     }
+    ;
 }
 
 LuaWindow::LuaWindow()
     : UIWindow("Lua")
 {
     m_current_command.reserve(200);
+    m_script_name.reserve(200);
+    m_entered_name.reserve(200);
 }
 
 void LuaWindow::draw()
@@ -90,10 +92,12 @@ void LuaWindow::draw()
     if (ImGui::InputText("Command", m_current_command.data(), 200, flags))
     {
         auto lua = LuaWrapper::getSingleton();
-        if(!lua->doString(m_current_command.c_str()))
+        if (!lua->doString(m_current_command.c_str()))
         {
             m_last_error_msg = lua->getLastError();
-        }else{
+        }
+        else
+        {
             m_last_error_msg = "";
         }
         //! add command to history and remove old commands
@@ -103,19 +107,70 @@ void LuaWindow::draw()
             m_command_history.pop_front();
         }
     }
+     if (ImGui::InputText("Script", m_script_name.data(), 200, flags))
+    {
+        auto lua = LuaWrapper::getSingleton();
+        if (!lua->doFile(m_script_name.c_str()))
+        {
+            m_last_error_msg = lua->getLastError();
+        }
+    }
 
-    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255,0,0,255));
+    auto &scene = GameWorld::getWorld().m_scene;
+    for (auto root_id : scene.m_roots)
+    {
+        std::queue<int> to_visit;
+        to_visit.push(root_id);
+        while (!to_visit.empty())
+        {
+            auto current_id = to_visit.front();
+            auto &current = scene.m_nodes.at(current_id);
+            to_visit.pop();
+            assert(current.p_object);
+            auto node_name = GameWorld::getWorld().getName(current.p_object->getId());
+
+            bool opened = ImGui::TreeNode(node_name.c_str());
+            ImGui::SameLine();
+            bool selected = false;
+            if (ImGui::Selectable(node_name.c_str(), selected))
+            {
+                m_selected_entity_id = current.p_object->getId();
+            }
+            if (opened)
+            {
+                for (auto child : current.children)
+                {
+                    to_visit.push(child);
+                }
+                ImGui::TreePop();
+
+                static char buf[69] = "";
+                ImGuiInputTextFlags flags = ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue;
+                if (ImGui::InputText("Name", buf, 69, flags))
+                {
+                    GameWorld::getWorld().setName(current.p_object->getId(), {buf});
+                }
+            }
+        }
+    }
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     ImGui::Text("%s", m_last_error_msg.c_str());
     ImGui::PopStyleColor();
 
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
     {
-        ImGui::SetNextFrameWantCaptureKeyboard(true); 
+        ImGui::SetNextFrameWantCaptureKeyboard(true);
         if (ImGui::IsKeyChordPressed(ImGuiKey_DownArrow) && m_command_history.size() > 0)
         {
-            m_selected_command_ind = (m_selected_command_ind + 1)%m_command_history.size();
-            m_current_command = m_command_history.at(m_selected_command_ind);        
+            m_selected_command_ind = (m_selected_command_ind + 1) % m_command_history.size();
+            m_current_command = m_command_history.at(m_selected_command_ind);
         }
+    }
+
+    if (ImGui::InputFloat2("Coordinates: ", &m_coords.x))
+    {
+        auto p_object = GameWorld::getWorld().get(m_selected_entity_id);
+        p_object->setPosition(m_coords);
     }
 
     ImGui::End();

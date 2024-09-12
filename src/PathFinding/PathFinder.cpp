@@ -6,6 +6,9 @@
 #include <fstream>
 #include <iostream>
 
+
+namespace pathfinding{
+
 PathFinder::PathFinder(cdt::Triangulation<cdt::Vector2i> &cdt)
     : m_cdt(cdt)
 {
@@ -88,8 +91,8 @@ void PathFinder::findSubOptimalPathCenters(cdt::Vector2f r_start, cdt::Vector2f 
     std::vector<AstarDataPQ> to_visit;
     for (int i = 0; i < triangles.size(); ++i)
     {
-        m_g_values[i] = std::numeric_limits<float>::max();
-        m_back_pointers[i] = -1;
+        m_g_values.at(i) = std::numeric_limits<float>::max();
+        m_back_pointers.at(i) = -1;
     }
 
     std::priority_queue to_visit_pque(
@@ -448,6 +451,10 @@ PathFinder::PathData PathFinder::pathFromFunnel(const cdt::Vector2f r_start, con
             }
             else
             {
+                if(left_index >= left_portals.size())
+                {
+                    break;
+                }
                 portals.push_back(left_portals.at(left_index));
 
                 smoothed_path.push_back(portal_left);
@@ -476,6 +483,10 @@ PathFinder::PathData PathFinder::pathFromFunnel(const cdt::Vector2f r_start, con
             }
             else
             {
+                if(right_index >= right_portals.size())
+                {
+                    break;
+                }
                 portals.push_back(right_portals.at(right_index));
 
                 smoothed_path.push_back(portal_right);
@@ -506,3 +517,5 @@ float PathFinder::sign(cdt::Vector2f a, cdt::Vector2f b, cdt::Vector2f c) const
     const auto area = by * ax - ay * bx;
     return area;
 }
+
+}//! namespace pathfinding

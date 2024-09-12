@@ -16,7 +16,7 @@ out vec4 FragColor;
 uniform float u_time;
 uniform float u_perlin_multiplier = 0.2;
 uniform float u_mixture = 0.3;
-uniform float u_cracks_scale = 1.0;
+uniform float u_cracks_scale = 10.0;
 uniform vec3 u_color;
 uniform vec3 u_cracks_color;
 uniform sampler2D u_texture;

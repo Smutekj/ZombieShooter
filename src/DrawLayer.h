@@ -8,22 +8,18 @@
 
 #include "PostEffects.h"
 
-
-
-
-
 class DrawLayer
 {
 
 public:
     DrawLayer(int width, int height);
+    DrawLayer(int width, int height, TextureOptions options);
 
     void toggleActivate();
 
     bool isActive() const;
 
     void draw(Renderer &window_rend);
-
 
     void drawDirectly(Renderer &canvas);
 
@@ -53,8 +49,7 @@ private:
 struct LayersHolder
 {
 
-
-    DrawLayer &addLayer(std::string name, int depth);
+    DrawLayer &addLayer(std::string name, int depth, TextureOptions options = {});
     // DrawLayer &addLayerOnTop(std::string name);
     // DrawLayer &addLayerDown(std::string name);
     bool hasLayer(std::string name)
@@ -76,7 +71,7 @@ struct LayersHolder
         at(name)->toggleActivate();
     }
 
-    void draw(Renderer &target, const View& view);
+    void draw(Renderer &target, const View &view);
 
     std::map<int, std::shared_ptr<DrawLayer>> m_layers;
     std::map<std::string, int> m_name2depth;
