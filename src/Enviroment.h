@@ -8,7 +8,7 @@
 #include "Particles.h"
 #include "GameObject.h"
 
-class LayersHolder;
+struct LayersHolder;
 
 class EnviromentEffect : public GameObject
 {

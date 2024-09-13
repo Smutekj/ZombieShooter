@@ -9,7 +9,7 @@
 
 #include <LuaBridge/LuaBridge.h>
 
-//! Code for making the singleton work
+//! Code for making the singleton work (Likely stolen)
 LuaWrapper *LuaWrapper::s_instance = nullptr;
 
 LuaWrapper *LuaWrapper::getSingleton()
@@ -269,13 +269,14 @@ int setVelocity(lua_State *state)
 void LuaWrapper::initializeLuaFunctions()
 {
     lua_register(m_lua_state, "createObject", createObject);
+    lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
     lua_register(m_lua_state, "addEffect", addEffect);
+    
     lua_register(m_lua_state, "setPosition", setPosition);
     lua_register(m_lua_state, "setTarget", setTarget);
-    lua_register(m_lua_state, "changeParentOf", changeParentOf);
-    lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
-    lua_register(m_lua_state, "setPosition", setPosition);
     lua_register(m_lua_state, "setVelocity", setVelocity);
+
+    lua_register(m_lua_state, "changeParentOf", changeParentOf);
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginNamespace("test")

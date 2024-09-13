@@ -11,9 +11,9 @@
 #ifdef __cplusplus
 extern "C"
 {
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
+#include "../external/lua/src/lua.h"
+#include "../external/lua/src/lualib.h"
+#include "../external/lua/src/lauxlib.h"
 };
 #endif //__cplusplus
 
@@ -23,6 +23,10 @@ extern "C"
 
 #include "LuaWrapper.h"
 #include <LuaBridge/LuaBridge.h>
+
+#ifndef M_PIf
+#define M_PIf std::numbers::pi_v<float>
+#endif
 
 namespace cdt
 {
@@ -69,7 +73,7 @@ PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
 void PlayerEntity::update(float dt)
 {
     utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
-    m_vision.contrstuctField(asFloat(m_pos), asFloat(m_look_dir));
+    m_vision.contrstuctField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
 }
 void PlayerEntity::onCreation()
 {

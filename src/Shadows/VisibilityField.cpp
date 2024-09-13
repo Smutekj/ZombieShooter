@@ -71,9 +71,9 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
     //! when standing on some line,
     //! we move the point very little towards triangle center
     //!  so that we don't have to deal with it (dirty but maybe works)
-    auto v1 = asFloat(curr_tri.verts[0]);
-    auto v2 = asFloat(curr_tri.verts[1]);
-    auto v3 = asFloat(curr_tri.verts[2]);
+    auto v1 = cdt::asFloat(curr_tri.verts[0]);
+    auto v2 = cdt::asFloat(curr_tri.verts[1]);
+    auto v3 = cdt::asFloat(curr_tri.verts[2]);
     auto center = cdt::Vector2f(v1 + v2 + v3) / 3.f;
     if (lies_on_line(from, v2, v1) || lies_on_line(from, v3, v2) || lies_on_line(from, v1, v3))
     {
@@ -82,8 +82,8 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
 
     for (int i = 0; i < 3; ++i)
     {
-        auto left = asFloat(curr_tri.verts[next(i)]);
-        auto right = asFloat(curr_tri.verts[i]);
+        auto left = cdt::asFloat(curr_tri.verts[next(i)]);
+        auto right = cdt::asFloat(curr_tri.verts[i]);
 
         // if (!in_vision_cone(left))
         // { //! find where left side of vision cone hit the tri-edge
@@ -136,9 +136,9 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
         }
 
         auto opposite_ind_in_tri = m_cdt.oppositeIndex(prev_tri_ind, curr_tri);
-        auto opposite_vert = asFloat(curr_tri.verts[opposite_ind_in_tri]);
-        auto left_vert = asFloat(curr_tri.verts[next(opposite_ind_in_tri)]);
-        auto right_vert = asFloat(curr_tri.verts[prev(opposite_ind_in_tri)]);
+        auto opposite_vert = cdt::asFloat(curr_tri.verts[opposite_ind_in_tri]);
+        auto left_vert = cdt::asFloat(curr_tri.verts[next(opposite_ind_in_tri)]);
+        auto right_vert = cdt::asFloat(curr_tri.verts[prev(opposite_ind_in_tri)]);
 
         auto left_neighbour = curr_tri.neighbours[opposite_ind_in_tri];
         auto right_neighbour = curr_tri.neighbours[prev(opposite_ind_in_tri)];
@@ -287,8 +287,8 @@ void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color c
     {
         vertices[3 * i + 0] = center_vert;
 
-        float dist_to_center_left = cdt::dist(asFloat(center_vert.pos), m_vision[i].left);
-        float dist_to_center_right = cdt::dist(asFloat(center_vert.pos), m_vision[i].right);
+        float dist_to_center_left = cdt::dist(cdt::asFloat(center_vert.pos), m_vision[i].left);
+        float dist_to_center_right = cdt::dist(cdt::asFloat(center_vert.pos), m_vision[i].right);
 
         vertices[3 * i + 1].pos = {m_vision[i].left.x, m_vision[i].left.y};
         vertices[3 * i + 1].color = Color(color.r, color.g, color.b, calcAlpha(dist_to_center_left));

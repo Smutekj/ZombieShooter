@@ -149,7 +149,7 @@ private:
 };
 
 class FrameBuffer;
-class LayersHolder;
+struct LayersHolder;
 
 class UI
 {

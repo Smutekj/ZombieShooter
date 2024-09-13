@@ -18,12 +18,12 @@
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
-using namespace boost;
-using EntityList = mp11::mp_list<ConcreteEntityHolder<PlayerEntity>, ConcreteEntityHolder<Enemy>>;
-using EntityList2 = mp11::mp_push_back<EntityList, ConcreteEntityHolder<Projectile>>;
+// using namespace boost;
+// using EntityList = mp11::mp_list<ConcreteEntityHolder<PlayerEntity>, ConcreteEntityHolder<Enemy>>;
+// using EntityList2 = mp11::mp_push_back<EntityList, ConcreteEntityHolder<Projectile>>;
 
-using DEntityList = mp11::mp_list<DynamicEntityHolder<PlayerEntity>, DynamicEntityHolder<Enemy>>;
-using DEntityList2 = mp11::mp_push_back<DEntityList, DynamicEntityHolder<Projectile>>;
+// using DEntityList = mp11::mp_list<DynamicEntityHolder<PlayerEntity>, DynamicEntityHolder<Enemy>>;
+// using DEntityList2 = mp11::mp_push_back<DEntityList, DynamicEntityHolder<Projectile>>;
 
 GameWorld::GameWorld()
 {
@@ -274,14 +274,14 @@ void GameWorld::loadTextures()
 constexpr void GameWorld::update2()
 {
 
-    mp11::mp_for_each<EntityList2>([&](auto entity_holder)
-                                   {
-                                    auto& entities = decltype(entity_holder)::m_entities;
-                                    // using decltype(entity_holder)
-                                      for (auto &e : entities)
-                                      {
-                                        e.update(0.01f);
-                                      } });
+    // mp11::mp_for_each<EntityList2>([&](auto entity_holder)
+    //                                {
+    //                                 auto& entities = decltype(entity_holder)::m_entities;
+    //                                 // using decltype(entity_holder)
+    //                                   for (auto &e : entities)
+    //                                   {
+    //                                     e.update(0.01f);
+    //                                   } });
 }
 
 int GameWorld::getIdOf(const std::string &name) const

@@ -7,9 +7,9 @@
 #ifdef __cplusplus
 extern "C"
 {
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
+#include "../external/lua/src/lua.h"
+#include "../external/lua/src/lualib.h"
+#include "../external/lua/src/lauxlib.h"
 }
 #endif
 

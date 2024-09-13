@@ -91,10 +91,10 @@ void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal
     for (auto &e : edges)
     {
         cdt::EdgeVInd e_ind;
-        auto v_ind1 = cdt.insertVertexAndGetData(e.from).overlapping_vertex;
+        auto v_ind1 = cdt.insertVertexAndGetData({e.from.x, e.from.y}).overlapping_vertex;
         e_ind.from = (v_ind1 == -1 ? cdt.m_vertices.size() - 1 : v_ind1);
 
-        auto v_ind2 = cdt.insertVertexAndGetData(e.to()).overlapping_vertex;
+        auto v_ind2 = cdt.insertVertexAndGetData({e.to().x, e.to().y}).overlapping_vertex;
         e_ind.to = (v_ind2 == -1 ? cdt.m_vertices.size() - 1 : v_ind2);
 
         edge_inds.push_back(e_ind);
@@ -119,7 +119,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_font = std::make_shared<Font>("arial.ttf");
     m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
         auto map_cell = m_map->coordToCell(rand_pos);
@@ -131,7 +131,7 @@ Application::Application(int width, int height) : m_window(width, height),
     p_player->setPosition({400, 300});
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -154,14 +154,14 @@ Application::Application(int width, int height) : m_window(width, height),
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
     auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
-    smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
+    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
     auto &fire_layer = m_layers.addLayer("Fire", 6, options);
-    fire_layer.addEffect(std::make_unique<Bloom2>(width, height));
+    // fire_layer.addEffect(std::make_unique<Bloom2>(width, height));
     auto &wall_layer = m_layers.addLayer("Wall", 0, options);
     wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
     auto &light_layer = m_layers.addLayer("Light", 150, options);
     light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
-    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    // light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
     light_layer.addEffect(std::make_unique<LightCombine>(width, height));
     light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
     light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
@@ -401,7 +401,7 @@ void moveView(utils::Vector2f dr, Renderer &target)
 
 float inline dir2angle(const utils::Vector2f &dir)
 {
-    return 180.f / M_PIf * std::atan2(dir.y, dir.x);
+    return 180.f / std::numbers::pi_v<float> * std::atan2(dir.y, dir.x);
 }
 
 void Application::update(float dt = 0.016f)
