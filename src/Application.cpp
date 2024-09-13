@@ -505,7 +505,7 @@ void Application::update(float dt = 0.016f)
     a.setScale(scene_size / 2.f);
     m_window_renderer.m_view.setCenter(a.getPosition());
     m_window_renderer.m_view.setSize(scene_size);
-    m_window_renderer.drawText(text, "Instanced2", GL_DYNAMIC_DRAW);
+    m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
     m_window_renderer.drawAll();
     m_window_renderer.m_view = old_view;
 

@@ -25,8 +25,7 @@ set_target_properties(LuaLib
 add_dependencies(LuaLib BuildLua) # So that anyone linking against TheLib causes BuildTheLib to build first
 
 ### LUABridge 
-FetchContent_Declare
-(
+FetchContent_Declare(
     LuaBridge
     GIT_REPOSITORY https://github.com/vinniefalco/LuaBridge
     GIT_TAG master 
@@ -34,8 +33,7 @@ FetchContent_Declare
 FetchContent_MakeAvailable(LuaBridge)
             
 ### RENDERER
-FetchContent_Declare
-(
+FetchContent_Declare(
   renderer  
   GIT_REPOSITORY https://github.com/Smutekj/simple-emscripten-renderer
   GIT_TAG testing
@@ -43,8 +41,7 @@ FetchContent_Declare
 FetchContent_MakeAvailable(renderer)
 
 ### CONSTRAINED DELAUNAY TRIANGULATION
-FetchContent_Declare
-(
+FetchContent_Declare(
     CDT
     GIT_REPOSITORY https://github.com/Smutekj/CDT
     GIT_TAG main 
