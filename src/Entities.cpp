@@ -215,11 +215,13 @@ void Projectile::draw(LayersHolder &layers)
     }
 
     auto &canvas = layers.getCanvas("Unit");
+    auto &text_canvas = layers.getCanvas("Text");
 
     Text name("Test");
     name.setFont(m_font);
     name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
-    canvas.drawText(name, "Instanced", GL_DYNAMIC_DRAW);
+    name.setColor({255,0,0,255});
+    text_canvas.drawText(name, "Text", GL_DYNAMIC_DRAW);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
     setAngle(angle);

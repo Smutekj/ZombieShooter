@@ -131,7 +131,7 @@ Application::Application(int width, int height) : m_window(width, height),
     p_player->setPosition({400, 300});
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 50; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -149,14 +149,20 @@ Application::Application(int width, int height) : m_window(width, height),
     options.wrap_x = TexWrapParam::ClampEdge;
     options.wrap_y = TexWrapParam::ClampEdge;
 
+    TextureOptions text_options;
+    text_options.data_type = TextureDataTypes::UByte;
+    text_options.format = TextureFormat::RGBA;
+    text_options.internal_format = TextureFormat::RGBA;
+    auto &text_layer = m_layers.addLayer("Text", 200, text_options);
+    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
     auto &unit_layer = m_layers.addLayer("Unit", 10, options);
     unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
     auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
-    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
+    smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
     auto &fire_layer = m_layers.addLayer("Fire", 6, options);
-    // fire_layer.addEffect(std::make_unique<Bloom2>(width, height));
+    fire_layer.addEffect(std::make_unique<Bloom>(width, height));
     auto &wall_layer = m_layers.addLayer("Wall", 0, options);
     wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
     auto &light_layer = m_layers.addLayer("Light", 150, options);
@@ -177,10 +183,10 @@ Application::Application(int width, int height) : m_window(width, height),
     }
     m_window_renderer.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     m_window_renderer.addShader("Water", "../Resources/basictex.vert", "../Resources/test.frag");
-    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
     m_window_renderer.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_window_renderer.addShader("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
     m_window_renderer.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
+    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
     m_scene_canvas.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_scene_canvas.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
     m_scene_canvas.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
@@ -485,18 +491,23 @@ void Application::update(float dt = 0.016f)
     m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;
 
-    // Text text;
-    // m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
-    // m_window_renderer.m_view.setSize(m_window.getSize());
-    // text.setPosition(100, 0);
-    // text.setScale(1, 1);
-    // text.setFont(m_font);
-    // text.setColor({255, 255, 255, 255});
-    // std::string text_test = "Quest: ...";
-    // text.setText(text_test);
-    // m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
-    // m_window_renderer.drawAll();
-    // m_window_renderer.m_view = old_view;
+    Text text;
+    m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
+    m_window_renderer.m_view.setSize(m_window.getSize());
+    text.setPosition(100, 0);
+    text.setScale(1, 1);
+    text.setFont(m_font);
+    text.setColor({255, 255, 255, 255});
+    std::string text_test = "Quest: ...";
+    text.setText(text_test);
+    Sprite2 a(m_font->getTexture());
+    a.setPosition(scene_size / 2.f);
+    a.setScale(scene_size / 2.f);
+    m_window_renderer.m_view.setCenter(a.getPosition());
+    m_window_renderer.m_view.setSize(scene_size);
+    m_window_renderer.drawText(text, "Instanced2", GL_DYNAMIC_DRAW);
+    m_window_renderer.drawAll();
+    m_window_renderer.m_view = old_view;
 
     m_ui->draw(m_window);
 }

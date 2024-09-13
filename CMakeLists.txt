@@ -15,66 +15,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 endif()
 
 
-include(FetchContent)
-FetchContent_Declare(
-  renderer  
-  GIT_REPOSITORY https://github.com/Smutekj/simple-emscripten-renderer
-  GIT_TAG testing
-)
-FetchContent_MakeAvailable(renderer)
-
-FetchContent_Declare(
-  CDT
-  GIT_REPOSITORY https://github.com/Smutekj/CDT
-  GIT_TAG main 
-)
-FetchContent_MakeAvailable(CDT)
-
-if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-add_custom_target(
-   BuildLua
-   COMMAND emmake make generic 
-   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
-)
-else()
-add_custom_target(
-   BuildLua
-   COMMAND make generic
-   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
-)
-endif()
-
-add_library(LuaLib STATIC IMPORTED)
-set_target_properties(LuaLib
-PROPERTIES
-  IMPORTED_LOCATION    ${CMAKE_SOURCE_DIR}/external/lua/src/liblua.a # Make sure to use absolute path here
-  INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/external/lua/src/
-  INTERFACE_COMPILE_DEFINITIONS "USING_LUA;LUA_STATIC"
-)
-add_dependencies(LuaLib BuildLua) # So that anyone linking against TheLib causes BuildTheLib to build first
-
-FetchContent_Declare(
-  LuaBridge
-  GIT_REPOSITORY https://github.com/vinniefalco/LuaBridge
-  GIT_TAG master 
-)
-FetchContent_MakeAvailable(LuaBridge)
-
-# set(BOOST_INCLUDE_LIBRARIES mpl)
-# set(BOOST_ENABLE_CMAKE ON)
-# FetchContent_Declare(
-#   boost
-#   GIT_REPOSITORY https://github.com/boostorg/boost.git
-#   GIT_TAG boost-1.80.0
-# )
-# FetchContent_MakeAvailable(boost)
-
-
-
-
-find_package(Freetype REQUIRED)
-# find_package(Boost REQUIRED)
-
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 set(USE_FLAGS "-std=c++20 -s USE_SDL=2 -s USE_FREETYPE=1 -s FULL_ES3=1 -s OFFSCREEN_FRAMEBUFFER=1")
 set(USE_FLAGS "${USE_FLAGS} -s MIN_WEBGL_VERSION=1 -s MAX_WEBGL_VERSION=2")
