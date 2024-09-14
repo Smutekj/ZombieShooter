@@ -5,6 +5,7 @@
 #include "GameWorld.h"
 #include "Utils/RandomTools.h"
 
+#include <Font.h>
 
 EnviromentEffect::EnviromentEffect(TextureHolder& textures)
 : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
@@ -124,4 +125,43 @@ void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<in
         m_water_verts[3 * ind + 1].tex_coord = normalize_tex(tri.verts[1]);
         m_water_verts[3 * ind + 2].tex_coord = normalize_tex(tri.verts[2]);
     }
+}
+
+
+std::shared_ptr<Font> random_font = nullptr;
+
+FloatingText::FloatingText(ShaderHolder &shaders, TextureHolder& textures)
+    : EnviromentEffect(textures)
+{
+    setColor("EdgeColor", {0,0,0,1});
+    setColor("TextColor", {0,0,0,1});
+
+    if(!random_font)
+    {
+        random_font = std::make_shared<Font>("arial.ttf");
+    }
+    m_text.setFont(random_font);
+    m_text.setText("TestFloat");
+}
+
+void FloatingText::draw(LayersHolder& layers)
+{
+    auto text_color = m_colors.at("TextColor");
+    Color edge_color = m_colors.at("EdgeColor");
+    glm::vec4 ec(edge_color.r, edge_color.g, edge_color.b, edge_color.a);
+    auto& canvas = layers.getCanvas("Text");
+    m_text.setColor(text_color);
+    canvas.getShader("Text").getVariables().uniforms["u_edge_color"] = ec;
+    canvas.drawText(m_text, "Text", GL_DYNAMIC_DRAW);
+}
+
+void FloatingText::update(float dt)
+{
+    m_time += dt;
+    if(m_time > m_lifetime)
+    {
+        
+    }
+    m_vel.y = 0.05f;
+    m_text.setPosition(m_pos);
 }

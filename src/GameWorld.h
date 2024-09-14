@@ -348,6 +348,11 @@ public:
         return instance;
     }
 
+    const std::unordered_map<std::string, int>& getNames() const
+    {
+        return m_name2id;
+    }
+
     void destroyObject(int entity_id);
     std::shared_ptr<GameObject> addObject(ObjectType type, std::string name, int parent_id = -1);
     std::shared_ptr<GameObject> addObject(std::string type, std::string name, int parent_id = -1);

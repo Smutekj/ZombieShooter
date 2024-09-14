@@ -61,6 +61,17 @@ void GameObject::setX(float x)
 {
     m_pos.x = x;
 }
+GameObject* GameObject::getTarget() const
+{
+    return m_target;
+}
+
+void GameObject::setTarget(GameObject* target)
+{
+    m_target = target;
+}
+
+
 
 float GameObject::getAngle() const
 {

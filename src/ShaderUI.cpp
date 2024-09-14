@@ -382,7 +382,7 @@ void UI::draw(Window &window)
 
     if (m_layers.hasLayer(m_selected_layer))
     {
-        auto p_layer = m_layers.at(m_selected_layer);
+        auto p_layer = m_layers.getLayer(m_selected_layer);
         if (ImGui::Button("Activate Layer"))
         {
             m_layers.activate(m_selected_layer);

@@ -91,6 +91,8 @@ public:
     void setY(float y) ;
     float getX() const;
     float getY() const;
+    void setTarget(GameObject* target);
+    GameObject* getTarget()const;
     void setPosition(utils::Vector2f new_position);
     void move(utils::Vector2f by);
 

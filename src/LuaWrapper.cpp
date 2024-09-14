@@ -74,11 +74,98 @@ static int createObject(lua_State *state)
         lua_error(state);
         return 1;
     }
-    new_obj->setPosition({300, 200});
-    new_obj->setSize(10);
     lua_pushinteger(state, LUA_OK);
     lua_error(state);
     return 1;
+}
+
+static Projectile *createProjectile(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 2)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return nullptr;
+    }
+    // const char *object_type = lua_tostring(state, 1);
+    // const char *object_name = lua_tostring(state, 2);
+
+    // auto new_obj = GameWorld::getWorld().addObject<Projectile>(object_type, object_name);
+    // return new_obj.get();
+}
+
+static GameObject *createObject2(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 2)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return nullptr;
+    }
+    const char *object_type = lua_tostring(state, 1);
+    const char *object_name = lua_tostring(state, 2);
+
+    auto new_obj = GameWorld::getWorld().addObject(object_type, object_name);
+    return new_obj.get();
+}
+
+static int removeObject(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 1)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 1 ARGUMENT BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return 1;
+    }
+    const char *object_name = lua_tostring(state, 1);
+
+    auto &world = GameWorld::getWorld();
+    auto id = world.getIdOf(object_name);
+    if (id == -1)
+    {
+        std::string text = object_name;
+        spdlog::get("lua_logger")->error("Object with name: " + text + " not found!");
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return 1;
+    }
+    world.get(id)->kill();
+    lua_pushinteger(state, LUA_OK);
+    lua_error(state);
+    return 1;
+}
+
+struct BookKeeper
+{
+};
+
+static void removeObjects(lua_State *state)
+{
+
+    const std::string match_sequence = lua_tostring(state, 1);
+    std::regex regex(match_sequence);
+
+    auto &world = GameWorld::getWorld();
+    for (auto &[name, id] : world.getNames())
+    {
+        if (std::regex_match(name.begin(), name.end(), regex))
+        {
+            assert(id != -1);
+            world.get(id)->kill();
+        }
+    }
 }
 
 static int addEffect(lua_State *state)
@@ -87,8 +174,7 @@ static int addEffect(lua_State *state)
 
     if (num_args != 2)
     {
-        std::string msg = " OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
-        spdlog::get("lua_logger")->error(msg);
+        spdlog::get("lua_logger")->error(" OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args));
         lua_pushinteger(state, LUA_ERRRUN);
         lua_error(state);
         return 1;
@@ -268,43 +354,50 @@ int setVelocity(lua_State *state)
 //! \brief Registers functions with lua
 void LuaWrapper::initializeLuaFunctions()
 {
-    lua_register(m_lua_state, "createObject", createObject);
     lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
     lua_register(m_lua_state, "addEffect", addEffect);
-    
+
     lua_register(m_lua_state, "setPosition", setPosition);
     lua_register(m_lua_state, "setTarget", setTarget);
     lua_register(m_lua_state, "setVelocity", setVelocity);
 
     lua_register(m_lua_state, "changeParentOf", changeParentOf);
 
-    luabridge::getGlobalNamespace(m_lua_state)
-        .beginNamespace("test")
-        .addFunction("testA", createObject)
-        .endNamespace();
-
     using namespace utils;
 
     luabridge::getGlobalNamespace(m_lua_state)
+        .addFunction("createObject", &createObject2)
+        .addFunction("createProjectile", &createProjectile)
+        .addFunction("removeObject", &removeObject)
+        .addFunction("removeObjects", &removeObjects)
+        .addFunction("setPosition", &setPosition)
+        .addFunction("setTarget", &setTarget)
+        .addFunction("setVelocity", &setVelocity);
+
+    luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<utils::Vector2f>("Vec")
-        .addConstructor<void(*) (float, float)>()
+        .addConstructor<void (*)(float, float)>()
         .addProperty("x", &Vector2f::x)
         .addProperty("y", &Vector2f::y)
         .addFunction("__add", &Vector2f::operator+)
+        .addFunction("__sub", &Vector2f::operator-)
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<GameObject>("GameObject")
         .addProperty("x", &GameObject::getX, &GameObject::setX)
         .addProperty("y", &GameObject::getY, &GameObject::setY)
+        .addProperty("target", &GameObject::getTarget, &GameObject::setTarget)
         .addProperty("vel", &GameObject::m_vel)
         .endClass()
         .deriveClass<Enemy, GameObject>("Enemy")
         .addProperty("state", &Enemy::getState, &Enemy::setState)
+        .addProperty("script", &Enemy::getScript, &Enemy::setScript)
         .endClass()
-        ;
-    // .deriveClass<Enemy, GameObject>("Enemy")
-    // .endClass()
+        .deriveClass<Projectile, GameObject>("Bullet")
+        .addProperty("max_vel", &Projectile::getMaxVel, &Projectile::setMaxVel)
+        .addProperty("acc", &Projectile::getAcc, &Projectile::setAcc)
+        .endClass();
 }
 
 //! \brief runs the command if it is registered
@@ -322,11 +415,13 @@ bool LuaWrapper::doString(const std::string &command)
         return false;
     }
     auto call_status = lua_pcall(m_lua_state, 0, LUA_MULTRET, 0);
-    assert(lua_isinteger(m_lua_state, -1));
-    auto error_status = lua_tointeger(m_lua_state, -1);
-    if (error_status != LUA_OK)
+    if (lua_isinteger(m_lua_state, -1)) //! if function returns it is an error and we return possibly
     {
-        return false;
+        auto error_status = lua_tointeger(m_lua_state, -1);
+        if (error_status != LUA_OK)
+        {
+            return false;
+        }
     }
     return true;
 }

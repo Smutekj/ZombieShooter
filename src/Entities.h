@@ -20,7 +20,7 @@ public:
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
-    private:
+private:
     VisionField m_vision;
     VertexArray m_vision_verts;
 };
@@ -88,15 +88,33 @@ public:
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
 public:
-    AIState getState() const
+    int getState() const
     {
-        return m_state;
+        return static_cast<int>(m_state);
     }
-public:
-    void setState(AIState state) 
+    void setState(int state)
     {
-        m_state = state;
+        if (state >= 3)
+        {
+            return;
+        }
+        m_state = static_cast<AIState>(state);
     }
+
+    const std::string &getScript() const
+    {
+        return m_script_name;
+    }
+
+    void setScript(const std::string script_name)
+    {
+        m_script_name = script_name;
+    }
+
+private:
+    void avoidMeteors();
+    void boidSteering();
+    void doScript();
 
 public:
     float max_vel = 40.f;
@@ -109,11 +127,7 @@ public:
     utils::Vector2f m_next_path = {-1, -1};
     AIState m_state = AIState::Patroling;
 
-    Color m_color = Color(20,0,0,1);
-
-private:
-    void avoidMeteors();
-    void boidSteering();
+    Color m_color = Color(20, 0, 0, 1);
 
 public:
     static std::unordered_map<Multiplier, float> m_force_multipliers;
@@ -121,13 +135,15 @@ public:
 
 private:
     float m_boid_radius = 30.f;
-    utils::Vector2f m_acc = {0,0};
+    utils::Vector2f m_acc = {0, 0};
 
     Collisions::CollisionSystem *m_collision_system = nullptr;
     pathfinding::PathFinder *m_pf = nullptr;
     PlayerEntity *m_player = nullptr;
 
     bool m_is_avoiding = false;
+
+    std::string m_script_name = "basicai.lua";
 };
 
 template <class T>
@@ -150,33 +166,55 @@ public:
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
+    void setMaxVel(float new_vel)
+    {
+        m_max_vel = new_vel;
+    }
+
+    float getMaxVel() const
+    {
+        return m_max_vel;
+    }
+
+    void setAcc(float new_acc)
+    {
+        m_acc = new_acc;
+    }
+
+    float getAcc() const
+    {
+        return m_acc;
+    }
+
     void setTarget(ProjectileTarget target)
     {
-        m_target = target;
-        std::visit(
-            [this](auto &target)
-            {
-                using T = uncvref_t<decltype(target)>;
-                if constexpr (std::is_same_v<T, GameObject *>)
-                {
-                    if (target)
-                    {
-                        m_last_target_pos = target->getPosition();
-                    }
-                }
-                else if constexpr (std::is_same_v<T, utils::Vector2f>)
-                {
-                    m_last_target_pos = target;
-                }
-            },
-            m_target);
-        auto dr = m_last_target_pos - m_pos;
-        m_vel = (dr) / norm(dr) * 50.f;
+        // m_target = target;
+        // std::visit(
+        //     [this](auto &target)
+        //     {
+        //         using T = uncvref_t<decltype(target)>;
+        //         if constexpr (std::is_same_v<T, GameObject *>)
+        //         {
+        //             if (target)
+        //             {
+        //                 m_last_target_pos = target->getPosition();
+        //             }
+        //         }
+        //         else if constexpr (std::is_same_v<T, utils::Vector2f>)
+        //         {
+        //             m_last_target_pos = target;
+        //         }
+        //     },
+        //     m_target);
+        // auto dr = m_last_target_pos - m_pos;
+        // m_vel = (dr) / norm(dr) * 50.f;
     }
 
 protected:
-    ProjectileTarget m_target = nullptr;
+    // ProjectileTarget m_target = nullptr;
     utils::Vector2f m_last_target_pos = {0, 0};
+    float m_max_vel = 50.f;
+    float m_acc = 20.f;
     Particles m_bolt_particles;
 
     float m_time = 0.f;
@@ -213,5 +251,3 @@ struct ProjectileData
     GameObject *m_caster = nullptr;
     GameObject *m_target = nullptr;
 };
-
-

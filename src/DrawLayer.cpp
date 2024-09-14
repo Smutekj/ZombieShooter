@@ -19,7 +19,6 @@ DrawLayer::DrawLayer(int width, int height, TextureOptions options)
 {
 }
 
-
 void DrawLayer::toggleActivate()
 {
     m_is_active = !m_is_active;
@@ -38,7 +37,7 @@ void DrawLayer::draw(Renderer &window_rend)
     if (n_effects >= 2)
     {
         assert(n_effects % 2 != 1); //! not working with odd number of effects!
-        m_tmp_canvas1.clear({0,0,0,0});
+        m_tmp_canvas1.clear({0, 0, 0, 0});
         m_effects.at(0)->process(m_pixels.getTexture(), m_tmp_canvas1);
         for (int i = 1; i < n_effects - 1; ++i)
         {
@@ -58,7 +57,6 @@ void DrawLayer::draw(Renderer &window_rend)
     {
         drawDirectly(window_rend);
     }
-
 }
 
 void DrawLayer::drawDirectly(Renderer &canvas)
@@ -66,7 +64,7 @@ void DrawLayer::drawDirectly(Renderer &canvas)
     auto old_view = canvas.m_view;
     auto target_size = canvas.getTargetSize();
     Sprite2 screen_sprite(m_pixels.getTexture());
-    screen_sprite.setPosition(target_size/ 2.f);
+    screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
 
     canvas.m_view.setCenter(screen_sprite.getPosition());
@@ -102,6 +100,49 @@ DrawLayer &LayersHolder::addLayer(std::string name, int depth, TextureOptions op
     return *new_layer;
 }
 
+bool LayersHolder::hasLayer(const std::string &name)
+{
+    return m_name2depth.count(name) > 0;
+}
+
+std::shared_ptr<DrawLayer> LayersHolder::getLayer(const std::string &name)
+{
+    if (!hasLayer(name))
+    {
+        return nullptr;
+    }
+    assert(m_layers.count(m_name2depth.at(name)) > 0);
+    return m_layers.at(m_name2depth.at(name));
+}
+
+
+void LayersHolder::activate(std::string name)
+{
+    auto layer = getLayer(name);
+    if (layer)
+    {
+        layer->toggleActivate();
+    }
+}
+
+void LayersHolder::changeDepth(std::string name, int new_depth)
+{
+
+    auto layer = getLayer(name);
+    if (layer)
+    {
+        auto old_depth = m_name2depth.at(name);
+        if(m_layers.count(new_depth) > 0) //! if depth already exists do nothing
+        {
+            return;
+        }
+        //! otherwise remove old_depth and add new depth
+        m_layers.erase(old_depth); 
+        m_name2depth.at(name) = new_depth;
+        m_layers[new_depth] = layer;
+    }
+}
+
 Renderer &LayersHolder::getCanvas(std::string name)
 {
     return m_layers.at(m_name2depth.at(name))->m_canvas;
@@ -112,16 +153,15 @@ FrameBuffer &LayersHolder::getPixels(std::string name)
     return m_layers.at(m_name2depth.at(name))->m_pixels;
 }
 
-
 void LayersHolder::clearAllLayers()
 {
     for (auto &[depth, layer] : m_layers)
     {
-        layer->m_pixels.clear({0,0,0,0});
+        layer->m_pixels.clear({0, 0, 0, 0});
     }
 }
 
-void LayersHolder::draw(Renderer &target, const View& view)
+void LayersHolder::draw(Renderer &target, const View &view)
 {
     for (auto &[depth, layer] : m_layers)
     {

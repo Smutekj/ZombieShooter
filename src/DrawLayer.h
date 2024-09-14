@@ -52,24 +52,17 @@ struct LayersHolder
     DrawLayer &addLayer(std::string name, int depth, TextureOptions options = {});
     // DrawLayer &addLayerOnTop(std::string name);
     // DrawLayer &addLayerDown(std::string name);
-    bool hasLayer(std::string name)
-    {
-        return m_name2depth.count(name) > 0;
-    }
+    bool hasLayer(const std::string &name);
 
-    std::shared_ptr<DrawLayer> at(std::string name)
-    {
-        return m_layers.at(m_name2depth.at(name));
-    }
+    std::shared_ptr<DrawLayer> getLayer(const std::string &name);
+    void changeDepth(std::string name, int new_depth);
 
     void clearAllLayers();
 
+
     Renderer &getCanvas(std::string name);
     FrameBuffer &getPixels(std::string name);
-    void activate(std::string name)
-    {
-        at(name)->toggleActivate();
-    }
+    void activate(std::string name);
 
     void draw(Renderer &target, const View &view);
 

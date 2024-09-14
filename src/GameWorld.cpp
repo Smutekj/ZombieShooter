@@ -115,7 +115,8 @@ std::shared_ptr<GameObject> GameWorld::addObject(ObjectType type, std::string ob
 
     new_object->m_name = object_name;
     m_to_add.push({new_object, object_name, parent_id});
-    return m_to_add.back().p_object;
+    addQueuedEntities();
+    return new_object;
 }
 
 void GameWorld::addQueuedEntities()

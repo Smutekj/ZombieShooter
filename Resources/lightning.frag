@@ -71,6 +71,7 @@ void main()
 
    	vec2 uv = vec2((acos(cos_angle)/6.28+0.1/2.1), u_thickness*(r - u_radius));
 	
+    vec4 color = vec4(0.);
 	vec2 t ;
 	float y ;
 	float pct ;

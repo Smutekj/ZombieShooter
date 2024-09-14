@@ -157,7 +157,7 @@ void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
     }
     if (obj.getType() == ObjectType::Bullet)
     {
-        obj.kill();
+        // obj.kill();
     }
 };
 
@@ -194,7 +194,10 @@ void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
     auto type = obj.getType();
     if (type == ObjectType::Enemy)
     {
-        static_cast<Enemy &>(obj).m_health--;
+        auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
+        dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
+        // static_cast<Enemy &>(obj).m_health--;
+        // kill();
     }
 };
 void Projectile::onCreation()
@@ -220,7 +223,7 @@ void Projectile::draw(LayersHolder &layers)
     Text name("Test");
     name.setFont(m_font);
     name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
-    name.setColor({255,0,0,255});
+    name.setColor({0, 0, 0, 255});
     text_canvas.drawText(name, "Text", GL_DYNAMIC_DRAW);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
@@ -234,36 +237,36 @@ void Projectile::draw(LayersHolder &layers)
 
 void Projectile::update(float dt)
 {
-    std::visit(
-        [this](auto &target)
-        {
-        using T = uncvref_t<decltype(target)>;
-        if constexpr (std::is_same_v<T, GameObject *>)
-        {
-            if (target)
+    // std::visit(
+    //     [this](auto &target)
+    //     {
+    //     using T = uncvref_t<decltype(target)>;
+    //     if constexpr (std::is_same_v<T, GameObject *>)
+    //     {
+            if (m_target)
             {
 
-                if (target->isDead())
+                if (m_target->isDead())
                 {
                     m_target = nullptr;
                 }else{
-                    m_last_target_pos = target->getPosition();
+                    m_last_target_pos = m_target->getPosition();
                 }
             }
-            else if constexpr (std::is_same_v<T, utils::Vector2f>)
-            {
-            }
+        //     else if constexpr (std::is_same_v<T, utils::Vector2f>)
+        //     {
+        //     }
 
-        } },
-        m_target);
+        // } },
+        // m_target);
 
     if (norm2(m_vel) > 0.0001)
     {
     }
     auto dr = m_last_target_pos - m_pos;
     auto dv = (dr / norm(dr) - m_vel / norm(m_vel));
-    m_vel += dv * 0.5f;
-    m_vel *= 50. / norm(m_vel);
+    m_vel += dv * m_acc;
+    m_vel *= m_max_vel / norm(m_vel);
     setPosition(m_pos);
 
     m_time += dt;
@@ -293,23 +296,35 @@ inline void truncate(utils::Vector2f &vec, float max_value)
     }
 }
 
-void Enemy::update(float dt)
+void Enemy::doScript()
 {
-
     auto lua = LuaWrapper::getSingleton();
-    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/basicai.lua");
-    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "UpdateAI");
+    // lua.runScript("basicai.lua" ,"UpdateAI")
+    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, ("../scripts/" + m_script_name).c_str());
+    if (scriptLoadStatus)
+    {
+        spdlog::get("lua_logger")->error("Script with name " + m_script_name + " not done");
+        return;
+    }
+
+    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "updateAI");
     if (processFunc.isFunction())
     {
         try
         {
-            processFunc(static_cast<GameObject *>(this));
+            processFunc(static_cast<Enemy *>(this));
         }
         catch (std::exception e)
         {
             std::cout << e.what() << " !\n";
         }
     }
+}
+
+void Enemy::update(float dt)
+{
+
+    doScript();
 
     if (m_target)
     {
@@ -319,21 +334,6 @@ void Enemy::update(float dt)
             m_target_pos = {-1, -1};
         }
         m_target_pos = m_target->getPosition();
-
-        auto dist2target = dist(m_target_pos, m_pos);
-        if (dist2target < 500 && m_state != AIState::Attacking)
-        {
-
-            m_state = AIState::Attacking;
-        }
-        else
-        {
-            m_state = AIState::Chasing;
-        }
-    }
-    else
-    {
-        m_state = AIState::Patroling;
     }
 
     if (m_pf && m_target_pos.x > 0)
@@ -373,7 +373,7 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
     case ObjectType::Bullet:
     {
         auto &bullet = static_cast<Projectile &>(obj);
-        m_health--;
+        // m_health--;
         break;
     }
     }

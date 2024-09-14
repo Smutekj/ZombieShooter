@@ -1,10 +1,12 @@
 #include "Application.h"
 #include "PostEffects.h"
 #include "DrawLayer.h"
+#include "LuaWrapper.h"
 
 #include <IncludesGl.h>
 #include <Utils/RandomTools.h>
 #include <Utils/IO.h>
+#include <LuaBridge/LuaBridge.h>
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
@@ -14,6 +16,7 @@
 #include <chrono>
 #include <queue>
 #include <filesystem>
+
 
 template <class UniformType>
 struct ShaderUniform
@@ -131,7 +134,7 @@ Application::Application(int width, int height) : m_window(width, height),
     p_player->setPosition({400, 300});
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 50; ++i)
+    for (int i = 0; i < 1; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -153,9 +156,9 @@ Application::Application(int width, int height) : m_window(width, height),
     text_options.data_type = TextureDataTypes::UByte;
     text_options.format = TextureFormat::RGBA;
     text_options.internal_format = TextureFormat::RGBA;
-    auto &text_layer = m_layers.addLayer("Text", 200, text_options);
-    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
-    auto &unit_layer = m_layers.addLayer("Unit", 10, options);
+    auto &text_layer = m_layers.addLayer("Text", 100, text_options);
+    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
+    auto &unit_layer = m_layers.addLayer("Unit", 3, options);
     unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
@@ -186,7 +189,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_window_renderer.addShader("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
     m_window_renderer.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
-    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/text2.frag");
+    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
     m_scene_canvas.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_scene_canvas.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
     m_scene_canvas.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
@@ -212,6 +215,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setSize(m_window.getSize());
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
+    m_layers.activate("Light");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -449,12 +453,33 @@ void Application::update(float dt = 0.016f)
 
     auto mouse_coords = m_window_renderer.getMouseInWorld();
     auto wall_color = m_ui->getBackgroundColor();
-    wall_color.b = (std::sin(m_time) + 1.f) * 30.f + 20.f;
     // drawTriangles(world.getTriangulation(), wall_canvas, wall_color);
-    m_layers.clearAllLayers();
+
+    auto lua = LuaWrapper::getSingleton();
+    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/level1.lua");
+    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "Update");
+    if (processFunc.isFunction())
+    {
+        try
+        {
+            processFunc(&m_time);
+        }
+        catch (std::exception e)
+        {
+            std::cout << e.what() << " !\n";
+        }
+    }
 
     //! draw world
+    m_layers.clearAllLayers();
     world.draw(m_layers);
+
+    // auto call_back = [](std::weak_ptr<GameObject> p_obj){
+    //     auto thing = p_obj.lock();
+
+    //     GameWorld::getWorld().;
+    // };
+    // world.addEntityCallback(EntityEventType::EntityDestroyed, call_back);
     auto &light_canvas = m_layers.getCanvas("Light");
     light_canvas.m_view = m_window_renderer.m_view;
     light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f, 200, 300, m_ui->getLightColor());
@@ -464,7 +489,8 @@ void Application::update(float dt = 0.016f)
     //! draw background
     Sprite2 background(*m_textures.get("grass"));
     background.m_color = ColorByte{255, 255, 255, 0};
-    utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x, m_map->m_cell_count.y * m_map->m_cell_size.y};
+    utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x,
+                                m_map->m_cell_count.y * m_map->m_cell_size.y};
     background.setPosition(map_size / 2.f);
     background.setScale(map_size / 2.f);
     auto old_view = m_scene_canvas.m_view;
@@ -486,7 +512,7 @@ void Application::update(float dt = 0.016f)
     m_window_renderer.m_view.setSize(scene_size);
     m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
     auto old_factors = m_window_renderer.m_blend_factors;
-    m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::SrcAlpha};
+    // m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
     m_window_renderer.drawAll();
     m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;
