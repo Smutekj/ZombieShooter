@@ -161,7 +161,7 @@ public:
 
 public:
     Projectile() = default;
-    Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name = "frostbolt.lua");
+    Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name = "firebolt.lua");
     virtual ~Projectile() override {}
 
     virtual void update(float dt) override;
@@ -238,7 +238,8 @@ protected:
     float m_time = 0.f;
     float m_lifetime = 10.f;
 
-    std::string m_script_name;
+    std::string m_shader_name = "fireBolt";
+    std::string m_script_name = "firebolt";
 };
 
 struct Timer
@@ -261,9 +262,40 @@ public:
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
 private:
+    void readDataFromScript();
+
+public:
+    std::string m_script_name = "basicshield.lua";
+    std::string m_shader_name = "basicshield";
+
+private:
     float m_orbit_speed = 2.f;
     float m_time = 0.f;
     float m_lifetime = 500000.f;
+
+    std::unique_ptr<Particles> m_particles;
+
+    
+};
+class Shield : public GameObject
+{
+public:
+    Shield() = default;
+    Shield(TextureHolder &textures);
+    virtual ~Shield() override {}
+
+    virtual void update(float dt) override;
+    virtual void onCreation() override;
+    virtual void onDestruction() override;
+    virtual void draw(LayersHolder &layers) override;
+    virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+private:
+    float m_orbit_speed = 2.f;
+    float m_time = 0.f;
+    float m_lifetime = 500000.f;
+
+    std::unique_ptr<Particles> m_particles;
 };
 
 struct ProjectileData

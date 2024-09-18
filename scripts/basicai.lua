@@ -36,7 +36,7 @@ local function onAttack(enemy)
             p.target = target
             enemy.vel.x = 0;
             enemy.vel.y = 0;
-            p.setScript(p, "frostbolt.lua");
+            p.setScript(p, "firebolt.lua");
         else
             enemy.state = CHASING;
         end

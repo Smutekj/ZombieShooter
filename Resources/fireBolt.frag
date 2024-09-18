@@ -25,6 +25,8 @@ void main()
     vec3 st_time = vec3(v_tex_coord*u_tex_multiplier, u_time*u_time_multiplier);
     float n = pnoise(st_time, vec3(u_voronoi_uv, 1.0));
 
+    vec2 center = vec2(0.5, 0.5);
+    float shape_factor = 1. - smoothstep(0.45, 0.5, distance(center, v_tex_coord));
     vec3 result = u_color ;
-    FragColor = vec4(result*(1.-n),n);
+    FragColor = vec4(result*shape_factor, shape_factor);
 }                                          

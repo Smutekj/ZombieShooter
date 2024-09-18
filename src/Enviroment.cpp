@@ -7,13 +7,12 @@
 
 #include <Font.h>
 
-EnviromentEffect::EnviromentEffect(TextureHolder& textures)
-: GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
+EnviromentEffect::EnviromentEffect(TextureHolder &textures)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
 {
-
 }
 
-FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder& textures)
+FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
     : m_smoke(200), m_fire(200), EnviromentEffect(textures)
 {
     m_smoke.setInitColor(m_smoke_color);
@@ -81,10 +80,10 @@ void FireEffect::draw(LayersHolder &layers)
     m_fire.update(0.01f);
     m_fire.draw(fire_canvas);
 
-    light_canvas.drawCricleBatched(m_pos, 100.f, {2,1,1,1});
+    light_canvas.drawCricleBatched(m_pos, 100.f, {2, 1, 1, 1});
 }
 
-Water::Water(ShaderHolder &shaders, TextureHolder& textures)
+Water::Water(ShaderHolder &shaders, TextureHolder &textures)
     : m_water_verts(shaders.get("Water")), EnviromentEffect(textures)
 {
 }
@@ -115,28 +114,27 @@ void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<in
     for (int ind = 0; ind < water_tri_inds.size(); ++ind)
     {
         auto &tri = triangles.at(water_tri_inds.at(ind));
-        m_water_verts[3 * ind].pos = tri.verts[0];
+        m_water_verts[3 * ind + 0].pos = tri.verts[0];
         m_water_verts[3 * ind + 1].pos = tri.verts[1];
         m_water_verts[3 * ind + 2].pos = tri.verts[2];
-        m_water_verts[3 * ind].color = m_water_color;
+        m_water_verts[3 * ind + 0].color = m_water_color;
         m_water_verts[3 * ind + 1].color = m_water_color;
         m_water_verts[3 * ind + 2].color = m_water_color;
-        m_water_verts[3 * ind].tex_coord = normalize_tex(tri.verts[0]);
+        m_water_verts[3 * ind + 0].tex_coord = normalize_tex(tri.verts[0]);
         m_water_verts[3 * ind + 1].tex_coord = normalize_tex(tri.verts[1]);
         m_water_verts[3 * ind + 2].tex_coord = normalize_tex(tri.verts[2]);
     }
 }
 
-
 std::shared_ptr<Font> random_font = nullptr;
 
-FloatingText::FloatingText(ShaderHolder &shaders, TextureHolder& textures)
+FloatingText::FloatingText(ShaderHolder &shaders, TextureHolder &textures)
     : EnviromentEffect(textures)
 {
-    setColor("EdgeColor", {0,0,0,1});
-    setColor("TextColor", {0,0,0,1});
+    setColor("EdgeColor", {0, 0, 0, 1});
+    setColor("TextColor", {0, 0, 0, 1});
 
-    if(!random_font)
+    if (!random_font)
     {
         random_font = std::make_shared<Font>("arial.ttf");
     }
@@ -144,12 +142,12 @@ FloatingText::FloatingText(ShaderHolder &shaders, TextureHolder& textures)
     m_text.setText("TestFloat");
 }
 
-void FloatingText::draw(LayersHolder& layers)
+void FloatingText::draw(LayersHolder &layers)
 {
     auto text_color = m_colors.at("TextColor");
     Color edge_color = m_colors.at("EdgeColor");
     glm::vec4 ec(edge_color.r, edge_color.g, edge_color.b, edge_color.a);
-    auto& canvas = layers.getCanvas("Text");
+    auto &canvas = layers.getCanvas("Text");
     m_text.setColor(text_color);
     canvas.getShader("Text").getVariables().uniforms["u_edge_color"] = ec;
     canvas.drawText(m_text, "Text", GL_DYNAMIC_DRAW);
@@ -158,9 +156,9 @@ void FloatingText::draw(LayersHolder& layers)
 void FloatingText::update(float dt)
 {
     m_time += dt;
-    if(m_time > m_lifetime)
-    {   
-        kill();        
+    if (m_time > m_lifetime)
+    {
+        kill();
     }
     m_vel.y = 0.5f;
     m_text.setPosition(m_pos);

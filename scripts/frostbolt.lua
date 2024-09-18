@@ -1,9 +1,10 @@
 
 
-InitColor = Color(0., 1., 100., 1.);
-FinalColor = Color(0., 1., 100., 1.);
+InitColor = Color(5., 0., 10., 1.);
+FinalColor = Color(0., 10., 0., 1.);
 
-Shader = "fireBolt"
+TailShader = "fireBolt"
+BoltShader = "lightning"
 
 ParticleColors = {
     Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},

@@ -283,8 +283,9 @@ void Projectile::readDataFromScript()
     m_bolt_particles.setLifetime(2.f);
     m_bolt_particles.setRepeat(true);
 
-    auto shader_id = getVariable<std::string>(lua->m_lua_state, "Shader");
-    m_bolt_particles.setShader(shader_id);
+    auto tail_shader_id = getVariable<std::string>(lua->m_lua_state, "TailShader");
+    m_shader_name = getVariable<std::string>(lua->m_lua_state, "BoltShader");
+    m_bolt_particles.setShader(tail_shader_id);
 }
 
 Projectile::Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name)
@@ -325,11 +326,19 @@ void Projectile::draw(LayersHolder &layers)
         m_font = std::make_shared<Font>("arial.ttf");
     }
 
+    auto &tail_canvas = layers.getCanvas("Smoke");
     auto &canvas = layers.getCanvas("Wall");
     auto &text_canvas = layers.getCanvas("Text");
-    if (!canvas.hasShader("fireBolt"))
+    if (!canvas.hasShader(m_shader_name))
     {
-        canvas.addShader("fireBolt", "../Resources/basictex.vert", "../Resources/fireBolt.frag");
+        try
+        {
+            canvas.addShader(m_shader_name, "../Resources/basicinstanced.vert", "../Resources/" + m_shader_name + ".frag");
+        }
+        catch (std::exception &e)
+        {
+            std::cout << e.what() << "\n";
+        }
     }
 
     // Text name("Test");
@@ -343,8 +352,19 @@ void Projectile::draw(LayersHolder &layers)
 
     m_bolt_particles.setSpawnPos(m_pos);
     m_bolt_particles.update(0.01f);
-    m_bolt_particles.draw(canvas);
-    canvas.drawCricleBatched(m_pos, m_angle, 1.1f * m_size.x, 0.9f * m_size.y, {30, 0.2, 0., 0.7}, 51, "fireBolt");
+    m_bolt_particles.draw(tail_canvas);
+
+    auto texture = m_textures->get("bomb");
+
+    if (texture)
+    {
+        Sprite2 bolt_sprite(*texture);
+        bolt_sprite.m_texture_handles[0] = 0; //.
+        bolt_sprite.setPosition(m_pos);
+        bolt_sprite.setRotation(m_angle);
+        bolt_sprite.setScale(m_size);
+        canvas.drawSprite(bolt_sprite, m_shader_name, GL_DYNAMIC_DRAW);
+    }
 }
 
 void Projectile::update(float dt)
@@ -364,7 +384,6 @@ void Projectile::update(float dt)
 
     if (norm2(m_vel) > 0.0001)
     {
-
     }
     auto dr = m_last_target_pos - m_pos;
     auto dv = (dr / norm(dr) - m_vel / norm(m_vel));
@@ -489,7 +508,8 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
         try
         {
             collider(this, &bullet);
-        }catch(std::exception& e)
+        }
+        catch (std::exception &e)
         {
             std::cout << e.what() << "\n";
         }
@@ -618,13 +638,15 @@ void Enemy::boidSteering()
 OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
     : GameObject(world, textures, ObjectType::Orbiter)
 {
+    m_particles = std::make_unique<Particles>(100);
+    readDataFromScript();
 }
 
 void OrbitingShield::update(float dt)
 {
     m_time += dt;
     float orbit_angle = 180. * m_time * m_orbit_speed;
-    m_transform.setPosition(50.f * utils::angle2dir(orbit_angle));
+    m_transform.setPosition(0.f * utils::angle2dir(orbit_angle));
     if (m_time > m_lifetime)
     {
         kill();
@@ -644,6 +666,53 @@ void OrbitingShield::onDestruction()
 
 void OrbitingShield::draw(LayersHolder &layers)
 {
+    auto &unit_canvas = layers.getCanvas("Wall");
+    auto &particle_canvas = layers.getCanvas("Wall");
+
+    Sprite2 rect(*m_textures->get("bomb"));
+    rect.m_texture_handles[0] = 0;
+    rect.setPosition(m_pos);
+    rect.setRotation(dir2angle(m_vel));
+    rect.setScale(m_size);
+
+    unit_canvas.drawSprite(rect, m_shader_name, GL_DYNAMIC_DRAW);
+
+    m_particles->setSpawnPos(m_pos);
+    m_particles->update(0.01f);
+    m_particles->draw(particle_canvas);
+}
+
+
+
+Shield::Shield(TextureHolder &textures)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Orbiter)
+{
+}
+
+void Shield::update(float dt)
+{
+    m_time += dt;
+    float orbit_angle = 180. * m_time * m_orbit_speed;
+    m_transform.setPosition(0.f, 0.f);
+    if (m_time > m_lifetime)
+    {
+        kill();
+    }
+}
+
+void Shield::onCollisionWith(GameObject &obj, CollisionData &c_data)
+{
+}
+
+void Shield::onCreation()
+{
+}
+void Shield::onDestruction()
+{
+}
+
+void Shield::draw(LayersHolder &layers)
+{
     auto &unit_canvas = layers.getCanvas("Unit");
 
     Sprite2 rect(*m_textures->get("bomb"));
@@ -652,5 +721,89 @@ void OrbitingShield::draw(LayersHolder &layers)
     rect.setRotation(dir2angle(m_vel));
     rect.setScale(m_size * 2.f);
 
-    unit_canvas.drawSprite(rect, "lightning", GL_DYNAMIC_DRAW);
+    unit_canvas.drawSprite(rect, "basicshield", GL_DYNAMIC_DRAW);
+}
+
+void OrbitingShield::readDataFromScript()
+{
+
+    auto lua = LuaWrapper::getSingleton();
+    int script_load_status = luaL_dofile(lua->m_lua_state, ("../scripts/" + m_script_name).c_str());
+
+    reportErrors(lua->m_lua_state, script_load_status);
+    if (script_load_status)
+    {
+        spdlog::get("lua_logger")->error("Script could not loaded: " + m_script_name);
+        return;
+    }
+    else
+    {
+        auto init_color = getVariable<Color>(lua->m_lua_state, "InitColor");
+        auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
+        m_particles->setInitColor(init_color);
+        m_particles->setFinalColor(final_color);
+    }
+
+    auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
+    auto updater = luabridge::getGlobal(lua->m_lua_state, "Updater");
+
+    if (spawner.isFunction())
+    {
+        m_particles->setEmitter(
+            [this, spawner](auto pos)
+            {
+                Particle p;
+                try
+                {
+                    auto& world = GameWorld::getWorld();
+                    auto parent_id = world.m_scene.getNode(getId()).parent;
+                    auto owner = world.get(parent_id);
+                    auto vel = m_vel; 
+                    if(owner)
+                    {
+                        vel = owner->m_vel;
+                    }
+                    p = spawner(pos, vel);
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << e.what() << " !";
+                }
+                return p;
+            });
+    }
+    if (updater.isFunction())
+    {
+        m_particles->setUpdater(
+            [this, updater](Particle &p)
+            {
+                try
+                {
+                    p = updater(p);
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << e.what() << " !";
+                }
+            });
+    }
+    else
+    {
+        m_particles->setUpdater(
+            [](Particle &p)
+            {
+                p.pos += p.vel;
+            });
+    }
+
+    m_particles->setLifetime(1.f);
+    m_particles->setRepeat(true);
+
+    auto tail_shader_id = getVariable<std::string>(lua->m_lua_state, "TailShader");
+    auto shader_name = getVariable<std::string>(lua->m_lua_state, "BoltShader");
+    if(shader_name != "")
+    {
+        m_shader_name = shader_name;
+    }
+    m_particles->setShader(tail_shader_id);
 }

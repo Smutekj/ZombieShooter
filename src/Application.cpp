@@ -17,7 +17,6 @@
 #include <queue>
 #include <filesystem>
 
-
 template <class UniformType>
 struct ShaderUniform
 {
@@ -133,6 +132,8 @@ Application::Application(int width, int height) : m_window(width, height),
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
     p_player = world.addObject(ObjectType::Player, "Player");
     p_player->setPosition({400, 300});
+    world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
+    
     world.update(0); //! force insert player to world
 
     for (int i = 0; i < 1; ++i)
@@ -148,7 +149,7 @@ Application::Application(int width, int height) : m_window(width, height),
 
     for (int i = 0; i < 0; ++i)
     {
-        fireProjectile(utils::Vector2f{0.f,0.f}, p_player->getPosition());
+        fireProjectile(utils::Vector2f{0.f, 0.f}, p_player->getPosition());
     }
 
     std::filesystem::path path{"../Resources/"};
@@ -303,9 +304,12 @@ void Application::onKeyPress(SDL_Keycode key)
     case SDLK_LSHIFT:
         m_is_sprinting = true;
         break;
-    case SDLK_SPACE:
-        fireProjectile(mouse_pos, p_player->getPosition());
+    case SDLK_c:
+        changeShield();
         break;
+    case SDLK_SPACE:
+        m_window_renderer.m_view.setCenter(p_player->getPosition());
+        fireProjectile(mouse_pos, p_player->getPosition());
     }
 }
 
@@ -398,6 +402,21 @@ void Application::onKeyRelease(SDL_Keycode key)
     }
 }
 
+enum class SpellId
+{
+    FireBolt,
+    FrostBolt,
+    LightningBolt,
+};
+
+struct Spell
+{
+
+
+    std::string m_script_effect_name = "";
+    SpellId id = SpellId::FireBolt;
+};
+
 void Application::fireProjectile(ProjectileTarget target, utils::Vector2f from)
 {
     auto &world = GameWorld::getWorld();
@@ -405,6 +424,15 @@ void Application::fireProjectile(ProjectileTarget target, utils::Vector2f from)
     projectile.setPosition(from);
     projectile.setSize(10.f);
     projectile.setTarget(target);
+}
+
+void Application::changeShield()
+{
+    auto &world = GameWorld::getWorld();
+    world.destroyObject(world.getIdOf("Shield"));
+    world.update(0);
+    auto shield = world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
+    shield->setSize(50.f);
 }
 
 void moveView(utils::Vector2f dr, Renderer &target)

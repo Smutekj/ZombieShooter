@@ -181,6 +181,7 @@ private:
     friend void gameLoop(void *);
 
     void fireProjectile(ProjectileTarget target, utils::Vector2f from);
+    void changeShield();
 
 private:
     SurfaceManager m_surfaces;

@@ -3,7 +3,8 @@
 InitColor = Color(100., 1., 0., 1.);
 FinalColor = Color(0., 1., 100., 1.);
 
-Shader = "fireBolt"
+TailShader = ""
+BoltShader = "fireBolt"
 
 ParticleColors = {
     Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},
