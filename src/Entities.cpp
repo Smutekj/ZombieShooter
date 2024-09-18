@@ -23,6 +23,7 @@ extern "C"
 
 #include "LuaWrapper.h"
 #include <LuaBridge/LuaBridge.h>
+#include <LuaBridge/Map.h>
 
 #ifndef M_PIf
 #define M_PIf std::numbers::pi_v<float>
@@ -161,43 +162,150 @@ void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
     }
 };
 
-Projectile::Projectile(GameWorld *world, TextureHolder &textures)
-    : GameObject(world, textures, ObjectType::Bullet), m_bolt_particles(200)
+// std::map<std::string, Color> getColorTable(std::string script_name,
+//                                              std::unordered_map<std::string, std::shared_ptr<Particles>>& particles)
+// {
+//     // call function defined in Lua script
+//     auto lua = LuaWrapper::getSingleton();
+//     int script_load_status = luaL_dofile(lua->m_lua_state, "../scripts/firebolt.lua");
+//     reportErrors(lua->m_lua_state, script_load_status);
+
+//     auto colors_lua = luabridge::getGlobal(lua->m_lua_state, "ColorTable");
+//     if(colors_lua.isNil())
+//     {
+//         return;
+//     }
+
+//     std::map<std::string, Color> colors;
+
+//     auto& cl = colors_lua.cast<Projectile::ColorTable&>();
+
+//     for(auto& [slot_name, color_map] : cl)
+//     {
+//         colors[slot_name] = {}
+//     }
+
+// }
+
+Color getColor(lua_State *state, const std::string &var_name)
 {
-    m_bolt_particles.setInitColor({0., 0.5, 20., 1.});
-    m_bolt_particles.setFinalColor({1., 0.6, 2., 0.2});
-    m_bolt_particles.setEmitter(
-        [this](auto pos)
-        {
-            Particle p;
-            p.pos = pos + m_size.x / 2.f * utils::Vector2f{std::cos(randf(2 * M_PIf)), std::sin(randf(2 * M_PIf))} - m_vel / norm(m_vel) * m_size.x / 2.f;
-            p.vel = {-m_vel.y, m_vel.x};
-            p.vel *= (2. * randf() - 1.) / norm(m_vel) / 33.69f;
-            return p;
-        });
-    m_bolt_particles.setUpdater(
-        [](Particle &p)
-        {
-            p.scale = {2.f, 2.f};
-            p.pos += p.vel;
-        });
+    try
+    {
+        auto init_color = luabridge::getGlobal(state, var_name.c_str());
+        return init_color;
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what() << "\n";
+    }
+    return Color();
+}
+template <class VarType>
+VarType getVariable(lua_State *state, const std::string &var_name)
+{
+    try
+    {
+        auto var = luabridge::getGlobal(state, var_name.c_str());
+        return var;
+    }
+    catch (std::exception &e)
+    {
+        std::cout << e.what() << "\n";
+    }
+    static_assert(std::is_default_constructible_v<VarType>, "Add default constructor!");
+    return VarType();
+}
+
+void Projectile::readDataFromScript()
+{
+    auto lua = LuaWrapper::getSingleton();
+    int script_load_status = luaL_dofile(lua->m_lua_state, ("../scripts/" + m_script_name).c_str());
+
+    reportErrors(lua->m_lua_state, script_load_status);
+    if (script_load_status)
+    {
+        spdlog::get("lua_logger")->error("Script could not loaded: " + m_script_name);
+        return;
+    }
+    else
+    {
+        auto init_color = getVariable<Color>(lua->m_lua_state, "InitColor");
+        auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
+        m_bolt_particles.setInitColor(init_color);
+        m_bolt_particles.setFinalColor(final_color);
+    }
+
+    auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
+    auto updater = luabridge::getGlobal(lua->m_lua_state, "Updater");
+
+    if (spawner.isFunction())
+    {
+        m_bolt_particles.setEmitter(
+            [this, spawner](auto pos)
+            {
+                Particle p;
+                try
+                {
+                    p = spawner(pos, m_vel / norm(m_vel));
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << e.what() << " !";
+                }
+                return p;
+            });
+    }
+    if (updater.isFunction())
+    {
+        m_bolt_particles.setUpdater(
+            [this, updater](Particle &p)
+            {
+                try
+                {
+                    // updater(p);
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << e.what() << " !";
+                }
+            });
+    }
+    // else
+    {
+        m_bolt_particles.setUpdater(
+            [](Particle &p)
+            {
+                p.scale += utils::Vector2f{0.05f, 0.05f};
+                p.pos += p.vel;
+            });
+    }
+
     m_bolt_particles.setLifetime(2.f);
     m_bolt_particles.setRepeat(true);
-    setTarget(utils::Vector2f{0, 0});
 
+    auto shader_id = getVariable<std::string>(lua->m_lua_state, "Shader");
+    m_bolt_particles.setShader(shader_id);
+}
+
+Projectile::Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name)
+    : GameObject(world, textures, ObjectType::Bullet), m_bolt_particles(100), m_script_name(script_name)
+{
+    readDataFromScript();
+    setTarget(utils::Vector2f{0, 0});
     m_collision_shape = std::make_unique<Polygon>(8);
     setSize({5.f, 5.f});
+    m_lifetime = 5.;
 }
 
 void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
     auto type = obj.getType();
+
     if (type == ObjectType::Enemy)
     {
         auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
         dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
-        // static_cast<Enemy &>(obj).m_health--;
-        // kill();
+        dmg_text.m_lifetime = 5.f;
     }
 };
 void Projectile::onCreation()
@@ -217,14 +325,18 @@ void Projectile::draw(LayersHolder &layers)
         m_font = std::make_shared<Font>("arial.ttf");
     }
 
-    auto &canvas = layers.getCanvas("Unit");
+    auto &canvas = layers.getCanvas("Wall");
     auto &text_canvas = layers.getCanvas("Text");
+    if (!canvas.hasShader("fireBolt"))
+    {
+        canvas.addShader("fireBolt", "../Resources/basictex.vert", "../Resources/fireBolt.frag");
+    }
 
-    Text name("Test");
-    name.setFont(m_font);
-    name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
-    name.setColor({0, 0, 0, 255});
-    text_canvas.drawText(name, "Text", GL_DYNAMIC_DRAW);
+    // Text name("Test");
+    // name.setFont(m_font);
+    // name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
+    // name.setColor({0, 0, 0, 255});
+    // text_canvas.drawText(name, "Text", GL_DYNAMIC_DRAW);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
     setAngle(angle);
@@ -232,36 +344,27 @@ void Projectile::draw(LayersHolder &layers)
     m_bolt_particles.setSpawnPos(m_pos);
     m_bolt_particles.update(0.01f);
     m_bolt_particles.draw(canvas);
-    canvas.drawCricleBatched(m_pos, m_angle, 1.1f * m_size.x, 0.9f * m_size.y, {0, 2.0, 10., 0.5});
+    canvas.drawCricleBatched(m_pos, m_angle, 1.1f * m_size.x, 0.9f * m_size.y, {30, 0.2, 0., 0.7}, 51, "fireBolt");
 }
 
 void Projectile::update(float dt)
 {
-    // std::visit(
-    //     [this](auto &target)
-    //     {
-    //     using T = uncvref_t<decltype(target)>;
-    //     if constexpr (std::is_same_v<T, GameObject *>)
-    //     {
-            if (m_target)
-            {
+    if (m_target)
+    {
 
-                if (m_target->isDead())
-                {
-                    m_target = nullptr;
-                }else{
-                    m_last_target_pos = m_target->getPosition();
-                }
-            }
-        //     else if constexpr (std::is_same_v<T, utils::Vector2f>)
-        //     {
-        //     }
-
-        // } },
-        // m_target);
+        if (m_target->isDead())
+        {
+            m_target = nullptr;
+        }
+        else
+        {
+            m_last_target_pos = m_target->getPosition();
+        }
+    }
 
     if (norm2(m_vel) > 0.0001)
     {
+
     }
     auto dr = m_last_target_pos - m_pos;
     auto dv = (dr / norm(dr) - m_vel / norm(m_vel));
@@ -314,7 +417,7 @@ void Enemy::doScript()
         {
             processFunc(static_cast<Enemy *>(this));
         }
-        catch (std::exception e)
+        catch (std::exception &e)
         {
             std::cout << e.what() << " !\n";
         }
@@ -368,12 +471,28 @@ void Enemy::update(float dt)
 
 void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
+    auto lua = LuaWrapper::getSingleton();
+    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/collisions.lua");
+
+    if (scriptLoadStatus)
+    {
+        spdlog::get("lua_logger")->error("Script with name " + m_script_name + " not done");
+        return;
+    }
+    auto collider = luabridge::getGlobal(lua->m_lua_state, "resolveCollision");
+
     switch (obj.getType())
     {
     case ObjectType::Bullet:
     {
         auto &bullet = static_cast<Projectile &>(obj);
-        // m_health--;
+        try
+        {
+            collider(this, &bullet);
+        }catch(std::exception& e)
+        {
+            std::cout << e.what() << "\n";
+        }
         break;
     }
     }
@@ -389,17 +508,6 @@ void Enemy::onDestruction()
 void Enemy::draw(LayersHolder &layers)
 {
     drawAgent(m_pos, m_size.x, layers, m_color);
-
-    // for(auto pos : m_cm)
-    // {
-    //     auto dr = pos - m_pos;
-
-    //     line.setPosition(m_pos);
-    //     line.setRotation(dir2angle(dr));
-    //     line.setSize({norm(dr), 1.f});
-    //     line.setOrigin({0, 0.5f });
-    //     target.draw(line);
-    // }
 }
 
 void Enemy::avoidMeteors()

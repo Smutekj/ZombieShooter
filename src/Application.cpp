@@ -119,6 +119,7 @@ Application::Application(int width, int height) : m_window(width, height),
                                                   m_scene_canvas(m_scene_pixels)
 {
     using namespace map;
+
     m_font = std::make_shared<Font>("arial.ttf");
     m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
@@ -143,6 +144,11 @@ Application::Application(int width, int height) : m_window(width, height),
             new_enemy->setPosition(rand_pos);
             static_cast<Enemy &>(*new_enemy).m_target = p_player.get();
         }
+    }
+
+    for (int i = 0; i < 0; ++i)
+    {
+        fireProjectile(utils::Vector2f{0.f,0.f}, p_player->getPosition());
     }
 
     std::filesystem::path path{"../Resources/"};

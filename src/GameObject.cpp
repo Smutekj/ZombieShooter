@@ -99,6 +99,7 @@ int GameObject::getId() const
 {
     return m_id;
 }
+
 ObjectType GameObject::getType() const
 {
     return m_type;

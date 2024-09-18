@@ -2,6 +2,7 @@
 #include "GameWorld.h"
 #include "AILuaComponent.h"
 #include "Entities.h"
+#include "Particles.h"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
@@ -91,11 +92,31 @@ static Projectile *createProjectile(lua_State *state)
         lua_error(state);
         return nullptr;
     }
-    // const char *object_type = lua_tostring(state, 1);
-    // const char *object_name = lua_tostring(state, 2);
+    const char *object_type = lua_tostring(state, 1);
+    const char *object_name = lua_tostring(state, 2);
 
-    // auto new_obj = GameWorld::getWorld().addObject<Projectile>(object_type, object_name);
-    // return new_obj.get();
+    auto new_obj = GameWorld::getWorld().addObject("Bullet", object_name);
+
+    return static_cast<Projectile*>(new_obj.get());
+}
+
+static Enemy *createEnemy(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 1)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 1 ARGUMENTS BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return nullptr;
+    }
+    const char *object_name = lua_tostring(state, 1);
+
+    auto new_obj = GameWorld::getWorld().addObject("Enemy", object_name);
+
+    return static_cast<Enemy*>(new_obj.get());
 }
 
 static GameObject *createObject2(lua_State *state)
@@ -115,6 +136,26 @@ static GameObject *createObject2(lua_State *state)
 
     auto new_obj = GameWorld::getWorld().addObject(object_type, object_name);
     return new_obj.get();
+}
+
+static GameObject *getObject(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 1)
+    {
+        spdlog::get("lua_logger")->error("Object not fetched. EXPECTED 1 ARGUMENTS BUT GOT " + std::to_string(num_args));
+        return nullptr;
+    }
+    const std::string object_name = lua_tostring(state, 1);
+
+    auto new_obj = GameWorld::getWorld().get(object_name);
+    if (new_obj)
+    {
+        return new_obj.get();
+    }
+    spdlog::get("lua_logger")->error("Object not fetched. Name " + object_name + " does not exist.");
+    return nullptr;
 }
 
 static int removeObject(lua_State *state)
@@ -351,6 +392,19 @@ int setVelocity(lua_State *state)
     return 1;
 }
 
+std::string getName(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+    if (num_args != 1)
+    {
+        std::string msg = "Wrong number of arguments. Expected 1 but got: " + num_args;
+        spdlog::get("lua_logger")->error(msg);
+    }
+    int id = lua_tointeger(state, 1);
+    auto name = GameWorld::getWorld().getName(id);
+    return name;
+};
+
 //! \brief Registers functions with lua
 void LuaWrapper::initializeLuaFunctions()
 {
@@ -368,11 +422,14 @@ void LuaWrapper::initializeLuaFunctions()
     luabridge::getGlobalNamespace(m_lua_state)
         .addFunction("createObject", &createObject2)
         .addFunction("createProjectile", &createProjectile)
+        .addFunction("createEnemy", &createEnemy)
         .addFunction("removeObject", &removeObject)
         .addFunction("removeObjects", &removeObjects)
         .addFunction("setPosition", &setPosition)
         .addFunction("setTarget", &setTarget)
-        .addFunction("setVelocity", &setVelocity);
+        .addFunction("setVelocity", &setVelocity)
+        .addFunction("getName", &getName)
+        .addFunction("getObject", &getObject);
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<utils::Vector2f>("Vec")
@@ -380,23 +437,51 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("x", &Vector2f::x)
         .addProperty("y", &Vector2f::y)
         .addFunction("__add", &Vector2f::operator+)
-        .addFunction("__sub", &Vector2f::operator-)
+        // .addFunction("__sub", &Vector2f::oerator-)
         .endClass();
+
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<Particle>("Particle")
+        .addConstructor<void (*)(float, float)>()
+        .addProperty("pos", &Particle::pos)
+        .addProperty("vel", &Particle::vel)
+        .addProperty("scale", &Particle::scale)
+        .addProperty("color", &Particle::color)
+        .addProperty("life_time", &Particle::life_time)
+        .addProperty("time", &Particle::time)
+        .endClass();
+
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<Color>("Color")
+        .addConstructor<void (*)(float, float, float, float)>()
+        .addProperty("r", &Color::r)
+        .addProperty("g", &Color::g)
+        .addProperty("b", &Color::b)
+        .addProperty("a", &Color::a)
+        .endClass();
+
+
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<GameObject>("GameObject")
         .addProperty("x", &GameObject::getX, &GameObject::setX)
         .addProperty("y", &GameObject::getY, &GameObject::setY)
         .addProperty("target", &GameObject::getTarget, &GameObject::setTarget)
+        .addProperty("id", &GameObject::getId)
+        .addProperty("type", &GameObject::getType)
         .addProperty("vel", &GameObject::m_vel)
+        .addFunction("kill", &GameObject::kill)
         .endClass()
         .deriveClass<Enemy, GameObject>("Enemy")
         .addProperty("state", &Enemy::getState, &Enemy::setState)
         .addProperty("script", &Enemy::getScript, &Enemy::setScript)
+        .addProperty("health", &Enemy::m_health)
         .endClass()
         .deriveClass<Projectile, GameObject>("Bullet")
         .addProperty("max_vel", &Projectile::getMaxVel, &Projectile::setMaxVel)
         .addProperty("acc", &Projectile::getAcc, &Projectile::setAcc)
+        .addProperty("owner", &Projectile::m_owner_entity_id)
+        .addFunction("setScript", &Projectile::setScriptName)
         .endClass();
 }
 
@@ -425,7 +510,7 @@ bool LuaWrapper::doString(const std::string &command)
     }
     return true;
 }
-//! \brief runs the command if it is registered
+//! \brief runs the script if it is exists
 bool LuaWrapper::doFile(const std::string &filename)
 {
     auto file_status = luaL_loadfile(m_lua_state, ("../scripts/" + filename).c_str());
@@ -450,3 +535,19 @@ std::string LuaWrapper::getLastError()
         return m_ringbuffer_sink->last_formatted().at(0);
     return "";
 }
+
+
+void reportErrors(lua_State *lua_state, int status)
+{
+    if (status == 0)
+    {
+        return;
+    }
+
+    std::string error_msg = lua_tostring(lua_state, -1);
+    spdlog::get("lua_logger")->error("[LUA ERROR] " + error_msg);
+
+    // remove error message from Lua state
+    lua_pop(lua_state, 1);
+}
+

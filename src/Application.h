@@ -31,6 +31,9 @@ namespace cdt{
 }
 
 
+
+
+
 void gameLoop(void *mainLoopArg);
 
 std::vector<int> inline findConnectedTriInds(cdt::Triangulation<cdt::Vector2i> &cdt, int start_tri_ind)

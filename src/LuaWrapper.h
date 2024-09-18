@@ -15,7 +15,6 @@ extern "C"
 
 #include <spdlog/sinks/ringbuffer_sink.h>
 
-
 class GameWorld;
 namespace spdlog
 {
@@ -37,6 +36,7 @@ public:
     ~LuaWrapper();
 
     lua_State *m_lua_state;
+
 private:
     static LuaWrapper *s_instance;
     LuaWrapper();
@@ -47,6 +47,7 @@ private:
     std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ringbuffer_sink = nullptr;
 };
 
+void reportErrors(lua_State *luaState, int status);
 
 // //! \brief runs the \p function in the \p script_filename
 // template <class ObjType>

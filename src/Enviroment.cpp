@@ -159,9 +159,9 @@ void FloatingText::update(float dt)
 {
     m_time += dt;
     if(m_time > m_lifetime)
-    {
-        
+    {   
+        kill();        
     }
-    m_vel.y = 0.05f;
+    m_vel.y = 0.5f;
     m_text.setPosition(m_pos);
 }

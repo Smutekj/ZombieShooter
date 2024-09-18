@@ -155,9 +155,13 @@ struct fail : std::false_type
 
 class Projectile : public GameObject
 {
+
+public:
+    using ColorTable = std::map<std::string, std::map<std::string, float>>;
+
 public:
     Projectile() = default;
-    Projectile(GameWorld *world, TextureHolder &textures);
+    Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name = "frostbolt.lua");
     virtual ~Projectile() override {}
 
     virtual void update(float dt) override;
@@ -165,6 +169,17 @@ public:
     virtual void onDestruction() override;
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+    void setScriptName(const std::string &new_script_name)
+    {
+        m_script_name = new_script_name;
+        readDataFromScript();
+    }
+
+    const std::string&  getScriptName() const
+    {
+        return m_script_name;
+    }
 
     void setMaxVel(float new_vel)
     {
@@ -188,37 +203,42 @@ public:
 
     void setTarget(ProjectileTarget target)
     {
-        // m_target = target;
-        // std::visit(
-        //     [this](auto &target)
-        //     {
-        //         using T = uncvref_t<decltype(target)>;
-        //         if constexpr (std::is_same_v<T, GameObject *>)
-        //         {
-        //             if (target)
-        //             {
-        //                 m_last_target_pos = target->getPosition();
-        //             }
-        //         }
-        //         else if constexpr (std::is_same_v<T, utils::Vector2f>)
-        //         {
-        //             m_last_target_pos = target;
-        //         }
-        //     },
-        //     m_target);
-        // auto dr = m_last_target_pos - m_pos;
-        // m_vel = (dr) / norm(dr) * 50.f;
+        std::visit(
+            [this](auto &target)
+            {
+                using T = uncvref_t<decltype(target)>;
+                if constexpr (std::is_same_v<T, GameObject *>)
+                {
+                    if (target)
+                    {
+                        m_last_target_pos = target->getPosition();
+                    }
+                }
+                else if constexpr (std::is_same_v<T, utils::Vector2f>)
+                {
+                    m_last_target_pos = target;
+                }
+            },
+            target);
+        auto dr = m_last_target_pos - m_pos;
+        m_vel = (dr) / norm(dr) * m_max_vel;
     }
 
+    int m_owner_entity_id = -1;
+private:
+    void readDataFromScript();
 protected:
     // ProjectileTarget m_target = nullptr;
     utils::Vector2f m_last_target_pos = {0, 0};
     float m_max_vel = 50.f;
     float m_acc = 20.f;
-    Particles m_bolt_particles;
 
+    Particles m_bolt_particles;
+    std::unordered_map<std::string, std::shared_ptr<Particles>> m_particles;
     float m_time = 0.f;
     float m_lifetime = 10.f;
+
+    std::string m_script_name;
 };
 
 struct Timer
@@ -243,7 +263,7 @@ public:
 private:
     float m_orbit_speed = 2.f;
     float m_time = 0.f;
-    float m_lifetime = 5000000.f;
+    float m_lifetime = 500000.f;
 };
 
 struct ProjectileData

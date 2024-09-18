@@ -78,11 +78,12 @@ public:
     virtual void onCreation() override {}
     virtual void onDestruction() override {}
 
+public:
+    float m_lifetime = 5.f;
 private:
     Text m_text;
 
     float m_time = 0.f;
-    float m_lifetime = 5.f;
 };
 
 class MapGrid;
