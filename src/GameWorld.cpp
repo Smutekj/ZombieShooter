@@ -18,6 +18,10 @@
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
+#include "LuaWrapper.h"
+#include <LuaBridge/LuaBridge.h>
+#include <LuaBridge/Map.h>
+
 // using namespace boost;
 // using EntityList = mp11::mp_list<ConcreteEntityHolder<PlayerEntity>, ConcreteEntityHolder<Enemy>>;
 // using EntityList2 = mp11::mp_push_back<EntityList, ConcreteEntityHolder<Projectile>>;
@@ -162,6 +166,31 @@ bool GameWorld::kill(const std::string name)
     return true;
 }
 
+void runScriptOnDeath(GameObject* entity)
+{
+    auto lua = LuaWrapper::getSingleton();
+    // lua.runScript("basicai.lua" ,"UpdateAI")
+    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/entitydied.lua");
+    if (scriptLoadStatus)
+    {
+        spdlog::get("lua_logger")->error("Script with name entitydied.lua not done");
+        return;
+    }
+
+    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "OnEntityDead");
+    if (processFunc.isFunction())
+    {
+        try
+        {
+            processFunc(entity);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << e.what() << " !\n";
+        }
+    }
+}   
+
 void GameWorld::removeQueuedEntities()
 {
     while (!m_to_destroy.empty())
@@ -169,6 +198,7 @@ void GameWorld::removeQueuedEntities()
         auto object = m_to_destroy.front().p_object;
         auto name = m_to_destroy.front().name;
         object->onDestruction();
+        runScriptOnDeath(object.get());
 
         if (object->collides())
         {
@@ -192,7 +222,6 @@ void GameWorld::destroyObject(int entity_id)
     }
     std::weak_ptr<GameObject> e = m_entities.at(entity_id);
     m_entity_destroyed_subject.notify(e);
-
     m_to_destroy.push({m_entities.at(entity_id), m_id2name.at(entity_id)});
 }
 
@@ -214,6 +243,7 @@ void GameWorld::update(float dt)
     removeQueuedEntities();
     addQueuedEntities();
 }
+
 
 void GameWorld::draw(LayersHolder &layers)
 {

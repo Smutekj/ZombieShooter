@@ -131,12 +131,12 @@ Application::Application(int width, int height) : m_window(width, height),
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
     p_player = world.addObject(ObjectType::Player, "Player");
-    p_player->setPosition({400, 300});
+    p_player->setPosition({500, 500});
     world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
     
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -166,7 +166,7 @@ Application::Application(int width, int height) : m_window(width, height),
     auto &text_layer = m_layers.addLayer("Text", 100, text_options);
     text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
     auto &unit_layer = m_layers.addLayer("Unit", 3, options);
-    unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
+    // unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
     auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
@@ -207,8 +207,8 @@ Application::Application(int width, int height) : m_window(width, height),
 
     // m_water = std::make_shared<Water>(m_window_renderer.getShaders(), m_layers);
     auto &water = world.addVisualEffect<Water>("Water");
-    auto effect = world.addEffect("Fire", "TestFire", -1);
-    effect->setPosition(p_player->getPosition());
+    // auto effect = world.addEffect("Fire", "TestFire", -1);
+    // effect->setPosition(p_player->getPosition());
 
     auto texture_filenames = extractNamesInDirectory(path, ".png");
     for (auto &texture_filename : texture_filenames)
@@ -222,7 +222,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setSize(m_window.getSize());
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
-    // m_layers.activate("Light");
+    m_layers.activate("Light");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -540,7 +540,7 @@ void Application::update(float dt = 0.016f)
     m_window_renderer.m_view.setSize(scene_size);
     m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
     auto old_factors = m_window_renderer.m_blend_factors;
-    m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
+    m_window_renderer.m_blend_factors = {BlendFactor::One, BlendFactor::OneMinusSrcAlpha};
     m_window_renderer.drawAll();
     m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;

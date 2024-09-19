@@ -19,8 +19,8 @@ Bloom::Bloom(int width, int height)
     m_downsampler3.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
     m_downsampler33.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
 
-    m_bloom_renderer1.m_blend_factors = {bf::SrcAlpha, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
-    m_bloom_renderer2.m_blend_factors = {bf::SrcAlpha, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
+    m_bloom_renderer1.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
+    m_bloom_renderer2.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
 }
 
 void Bloom::process(Texture &source, Renderer &target)

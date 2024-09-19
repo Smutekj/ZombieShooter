@@ -6,6 +6,9 @@ FinalColor = Color(0., 10., 0., 1.);
 TailShader = ""
 BoltShader = "lightning"
 
+TailCanvas = "Wall";
+BoltCanvas = "Fire";
+
 ParticleColors = {
     Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},
     Final =  {r = 0.,g = 1.,b = 0.,a = 1.}

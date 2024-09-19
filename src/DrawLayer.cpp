@@ -143,9 +143,17 @@ void LayersHolder::changeDepth(std::string name, int new_depth)
     }
 }
 
-Renderer &LayersHolder::getCanvas(std::string name)
+Renderer &LayersHolder::getCanvas(const std::string& name)
 {
     return m_layers.at(m_name2depth.at(name))->m_canvas;
+}
+Renderer* LayersHolder::getCanvasP(const std::string& name)
+{
+    if(hasLayer(name))
+    {
+        return &getCanvas(name);
+    }
+    return nullptr;
 }
 
 FrameBuffer &LayersHolder::getPixels(std::string name)

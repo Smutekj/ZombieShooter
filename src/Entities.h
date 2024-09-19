@@ -240,6 +240,8 @@ protected:
 
     std::string m_shader_name = "fireBolt";
     std::string m_script_name = "firebolt";
+    std::string m_bolt_canvas_name = "Wall";
+    std::string m_tail_canvas_name = "Wall";
 };
 
 struct Timer

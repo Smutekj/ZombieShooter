@@ -60,7 +60,8 @@ struct LayersHolder
     void clearAllLayers();
 
 
-    Renderer &getCanvas(std::string name);
+    Renderer &getCanvas(const std::string& name);
+    Renderer* getCanvasP(const std::string& name);
     FrameBuffer &getPixels(std::string name);
     void activate(std::string name);
 

@@ -236,6 +236,10 @@ void Projectile::readDataFromScript()
         auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
         m_bolt_particles.setInitColor(init_color);
         m_bolt_particles.setFinalColor(final_color);
+        
+        m_bolt_canvas_name = getVariable<std::string>(lua->m_lua_state, "BoltCanvas");
+        m_tail_canvas_name = getVariable<std::string>(lua->m_lua_state, "TailCanvas");
+
     }
 
     auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
@@ -320,32 +324,23 @@ std::shared_ptr<Font> m_font = nullptr;
 void Projectile::onDestruction() {}
 void Projectile::draw(LayersHolder &layers)
 {
-
     if (!m_font)
     {
         m_font = std::make_shared<Font>("arial.ttf");
     }
 
-    auto &tail_canvas = layers.getCanvas("Wall");
-    auto &canvas = layers.getCanvas("Wall");
-    if (!canvas.hasShader(m_shader_name))
-    {
-        try
-        {
-            canvas.addShader(m_shader_name, "../Resources/basicinstanced.vert", "../Resources/" + m_shader_name + ".frag");
-        }
-        catch (std::exception &e)
-        {
-            std::cout << e.what() << "\n";
-        }
-    }
+    auto p_tail_canvas = layers.getCanvasP(m_tail_canvas_name);
+    auto p_bolt_canvas = layers.getCanvasP(m_bolt_canvas_name);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
     setAngle(angle);
 
     m_bolt_particles.setSpawnPos(m_pos);
     m_bolt_particles.update(0.01f);
-    m_bolt_particles.draw(tail_canvas);
+    if(p_tail_canvas)
+    {
+        m_bolt_particles.draw(*p_tail_canvas);
+    }
 
     auto texture = m_textures->get("bomb");
 
@@ -356,7 +351,10 @@ void Projectile::draw(LayersHolder &layers)
         bolt_sprite.setPosition(m_pos);
         bolt_sprite.setRotation(m_angle);
         bolt_sprite.setScale(m_size);
-        canvas.drawSprite(bolt_sprite, m_shader_name, GL_DYNAMIC_DRAW);
+        if(p_bolt_canvas)
+        {
+            p_bolt_canvas->drawSprite(bolt_sprite, m_shader_name, GL_DYNAMIC_DRAW);
+        }
     }
 }
 
@@ -491,16 +489,16 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
         spdlog::get("lua_logger")->error("Script with name " + m_script_name + " not done");
         return;
     }
-    auto collider = luabridge::getGlobal(lua->m_lua_state, "resolveCollision");
+    auto collider = luabridge::getGlobal(lua->m_lua_state, "ResolveCollision");
 
     switch (obj.getType())
     {
     case ObjectType::Bullet:
     {
-        auto &bullet = static_cast<Projectile &>(obj);
+        auto bullet = static_cast<Projectile*>(&obj);
         try
         {
-            collider(this, &bullet);
+            collider(this, &obj);
         }
         catch (std::exception &e)
         {
@@ -633,6 +631,7 @@ OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
 {
     m_particles = std::make_unique<Particles>(100);
     readDataFromScript();
+    setSize({50., 50.});
 }
 
 void OrbitingShield::update(float dt)
@@ -659,7 +658,7 @@ void OrbitingShield::onDestruction()
 
 void OrbitingShield::draw(LayersHolder &layers)
 {
-    auto &unit_canvas = layers.getCanvas("Wall");
+    auto &unit_canvas = layers.getCanvas("Unit");
     auto &particle_canvas = layers.getCanvas("Wall");
 
     Sprite2 rect(*m_textures->get("bomb"));
