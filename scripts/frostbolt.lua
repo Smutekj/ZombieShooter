@@ -3,7 +3,7 @@
 InitColor = Color(5., 0., 10., 1.);
 FinalColor = Color(0., 10., 0., 1.);
 
-TailShader = "fireBolt"
+TailShader = ""
 BoltShader = "lightning"
 
 ParticleColors = {
@@ -15,6 +15,7 @@ BoltColor = {r = 0.2,g = 2.,b = 69.,a = 1.}
 
 function Updater(particle)
     particle.pos = particle.pos + particle.vel;
+    return particle;
 end
 
 function randVec()

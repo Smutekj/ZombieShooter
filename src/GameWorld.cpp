@@ -185,6 +185,11 @@ void GameWorld::removeQueuedEntities()
 void GameWorld::destroyObject(int entity_id)
 {
     //! notify observers of destruction
+    if(entity_id == -1)
+    {
+        spdlog::get("lua_logger")->error("Cannot destroy entity, it does not exist!");
+        return;
+    }
     std::weak_ptr<GameObject> e = m_entities.at(entity_id);
     m_entity_destroyed_subject.notify(e);
 
@@ -259,9 +264,9 @@ void GameWorld::loadTextures()
     m_shaders.load("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
     m_shaders.load("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
     m_shaders.load("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
+    m_shaders.load("VisionLight2", "../Resources/basictex.vert", "../Resources/visionLight.frag");
     m_shaders.load("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
     m_shaders.load("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_shaders.load("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
     m_shaders.load("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
     m_shaders.load("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
     m_shaders.load("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");

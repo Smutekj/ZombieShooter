@@ -65,7 +65,7 @@ void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color co
 PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
     : GameObject(world, textures, ObjectType::Player),
       m_vision(world->getTriangulation()),
-      m_vision_verts(world->m_shaders.get("VisionLight"))
+      m_vision_verts(world->m_shaders.get("VisionLight2"))
 {
     m_collision_shape = std::make_unique<Polygon>(4);
     setSize({6.f, 6.f});
@@ -76,6 +76,7 @@ void PlayerEntity::update(float dt)
     utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
     m_vision.contrstuctField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
 }
+
 void PlayerEntity::onCreation()
 {
 }
@@ -96,6 +97,8 @@ void PlayerEntity::draw(LayersHolder &layers)
         const auto &pos = m_vision_verts[vert_ind].pos;
         auto dr = pos - m_pos;
         m_vision_verts[vert_ind].tex_coord = {dr}; //! we use this information in a shader
+        m_vision_verts[vert_ind].color = {1,1,1,1}; //! we use this information in a shader
+
     }
     light_canvas.drawVertices(m_vision_verts, GL_DYNAMIC_DRAW);
 
@@ -246,7 +249,7 @@ void Projectile::readDataFromScript()
                 Particle p;
                 try
                 {
-                    p = spawner(pos, m_vel / norm(m_vel));
+                    p = spawner(pos, m_vel);
                 }
                 catch (std::exception &e)
                 {
@@ -262,7 +265,7 @@ void Projectile::readDataFromScript()
             {
                 try
                 {
-                    // updater(p);
+                    p = updater(p);
                 }
                 catch (std::exception &e)
                 {
@@ -285,7 +288,7 @@ void Projectile::readDataFromScript()
 
     auto tail_shader_id = getVariable<std::string>(lua->m_lua_state, "TailShader");
     m_shader_name = getVariable<std::string>(lua->m_lua_state, "BoltShader");
-    m_bolt_particles.setShader(tail_shader_id);
+    // m_bolt_particles.setShader(tail_shader_id);
 }
 
 Projectile::Projectile(GameWorld *world, TextureHolder &textures, const std::string &script_name)
@@ -295,7 +298,6 @@ Projectile::Projectile(GameWorld *world, TextureHolder &textures, const std::str
     setTarget(utils::Vector2f{0, 0});
     m_collision_shape = std::make_unique<Polygon>(8);
     setSize({5.f, 5.f});
-    m_lifetime = 5.;
 }
 
 void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
@@ -304,9 +306,9 @@ void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
 
     if (type == ObjectType::Enemy)
     {
-        auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
-        dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
-        dmg_text.m_lifetime = 5.f;
+        // auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
+        // dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
+        // dmg_text.m_lifetime = 5.f;
     }
 };
 void Projectile::onCreation()
@@ -319,16 +321,13 @@ void Projectile::onDestruction() {}
 void Projectile::draw(LayersHolder &layers)
 {
 
-    int number = 0;
-
     if (!m_font)
     {
         m_font = std::make_shared<Font>("arial.ttf");
     }
 
-    auto &tail_canvas = layers.getCanvas("Smoke");
+    auto &tail_canvas = layers.getCanvas("Wall");
     auto &canvas = layers.getCanvas("Wall");
-    auto &text_canvas = layers.getCanvas("Text");
     if (!canvas.hasShader(m_shader_name))
     {
         try
@@ -340,12 +339,6 @@ void Projectile::draw(LayersHolder &layers)
             std::cout << e.what() << "\n";
         }
     }
-
-    // Text name("Test");
-    // name.setFont(m_font);
-    // name.setPosition(m_pos + utils::Vector2f{0.f, m_size.y * 2.f});
-    // name.setColor({0, 0, 0, 255});
-    // text_canvas.drawText(name, "Text", GL_DYNAMIC_DRAW);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
     setAngle(angle);
@@ -738,10 +731,25 @@ void OrbitingShield::readDataFromScript()
     }
     else
     {
+        // auto particles_script = luabridge::getGlobal(lua->m_lua_state, "InitParticles");
+        // if(particles_script.isFunction())
+        // {
+        //     try
+        //     {
+        //         particles_script(m_particles);
+        //     }
+        //     catch(const std::exception& e)
+        //     {
+        //         std::cerr << e.what() << '\n';
+        //     }
+            
+        // }
         auto init_color = getVariable<Color>(lua->m_lua_state, "InitColor");
         auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
+        auto spawn_period = getVariable<int>(lua->m_lua_state, "SpawnPeriod");
         m_particles->setInitColor(init_color);
         m_particles->setFinalColor(final_color);
+        m_particles->setPeriod(spawn_period);
     }
 
     auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
@@ -796,7 +804,6 @@ void OrbitingShield::readDataFromScript()
             });
     }
 
-    m_particles->setLifetime(1.f);
     m_particles->setRepeat(true);
 
     auto tail_shader_id = getVariable<std::string>(lua->m_lua_state, "TailShader");

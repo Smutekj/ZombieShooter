@@ -1,13 +1,12 @@
 
 
 
-InitColor = Color(0., 100., 0., 1.);
+InitColor = Color(100., 0.5, 0., 1.);
 FinalColor = Color(10., 1., 10., 0.2);
+SpawnPeriod = 2;
 
 TailShader = "fireBolt"
 BoltShader = "basicshield"
-
-
 
 BoltColor = {r = 0.2,g = 2.,b = 69.,a = 1.}
 
@@ -21,23 +20,23 @@ function randVec(size)
     return Vec(size*math.cos(rand_angle), size*math.sin(rand_angle));
 end
 
-
-function Updater(particle)
-
-    -- print("prev: ", particle.pos.x, particle.pos.y);
-    particle.pos = particle.pos + particle.vel;
-    return particle;
-    -- print("after: ", particle.pos.x, particle.pos.y);
-end
-
 local function angle(dir)
     return math.deg(math.atan(dir.y, dir.x));
 end
 
+function Updater(particle)
+    particle.vel.x = (particle.vel.x)*0.65;
+    particle.vel.y = (particle.vel.y)*0.65;
+    particle.pos = particle.pos + particle.vel;
+    return particle;
+end
+
+
+
 function Spawner(spawn_pos, spawn_vel)
 
     local size = 39.;
-    local speed = 0.076;
+    local speed = 0.01;
 
     local rand_angle = math.random()*2.*math.pi;
     local dr = Vec(math.sin(rand_angle)*size, math.cos(rand_angle)*1/0.7*size);
@@ -47,9 +46,10 @@ function Spawner(spawn_pos, spawn_vel)
     p.pos.y = spawn_pos.y + dr.y;
     print(spawn_vel.x, spawn_vel.y);
     local norm = math.sqrt(dr.x*dr.x + dr.y*dr.y);
-    p.vel.x = dr.x/norm*speed - spawn_vel.x;
-    p.vel.y = dr.y/norm*speed - spawn_vel.y;
-    p.angle = angle(p.vel)
+    p.vel.x = dr.x/norm*speed + spawn_vel.x/5.;
+    p.vel.y = dr.y/norm*speed + spawn_vel.y/5.;
+    p.angle = angle(dr)
+    p.life_time = 2.;
     p.scale.x = 10.;
     p.scale.y = 0.5;
     return p;

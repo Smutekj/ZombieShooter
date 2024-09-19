@@ -222,7 +222,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setSize(m_window.getSize());
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
-    m_layers.activate("Light");
+    // m_layers.activate("Light");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -310,6 +310,7 @@ void Application::onKeyPress(SDL_Keycode key)
     case SDLK_SPACE:
         m_window_renderer.m_view.setCenter(p_player->getPosition());
         fireProjectile(mouse_pos, p_player->getPosition());
+        break;
     }
 }
 
@@ -432,7 +433,6 @@ void Application::changeShield()
     world.destroyObject(world.getIdOf("Shield"));
     world.update(0);
     auto shield = world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
-    shield->setSize(50.f);
 }
 
 void moveView(utils::Vector2f dr, Renderer &target)
@@ -508,15 +508,9 @@ void Application::update(float dt = 0.016f)
     m_layers.clearAllLayers();
     world.draw(m_layers);
 
-    // auto call_back = [](std::weak_ptr<GameObject> p_obj){
-    //     auto thing = p_obj.lock();
-
-    //     GameWorld::getWorld().;
-    // };
-    // world.addEntityCallback(EntityEventType::EntityDestroyed, call_back);
     auto &light_canvas = m_layers.getCanvas("Light");
     light_canvas.m_view = m_window_renderer.m_view;
-    light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f, 200, 300, m_ui->getLightColor());
+    light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f, 200, 300, {1,1,1,1});
 
     //! clear and draw into scene
     m_scene_canvas.clear({0, 0, 0, 0});
@@ -546,7 +540,7 @@ void Application::update(float dt = 0.016f)
     m_window_renderer.m_view.setSize(scene_size);
     m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
     auto old_factors = m_window_renderer.m_blend_factors;
-    // m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
+    m_window_renderer.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
     m_window_renderer.drawAll();
     m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;

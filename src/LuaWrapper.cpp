@@ -451,6 +451,14 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("life_time", &Particle::life_time)
         .addProperty("time", &Particle::time)
         .endClass();
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<Particles>("Particles")
+        .addConstructor<void (*)(int)>()
+        .addProperty("spawn_pos", &Particles::m_spawn_pos)
+        .addProperty("init_color", &Particles::m_init_color)
+        .addProperty("final_color", &Particles::m_final_color)
+        .addProperty("final_color", &Particles::m_final_color)
+        .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<Color>("Color")

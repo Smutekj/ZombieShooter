@@ -17,7 +17,6 @@ FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
 {
     m_smoke.setInitColor(m_smoke_color);
     m_smoke.setFinalColor(m_smoke_edge_color);
-
     m_smoke.setLifetime(2.f);
     m_smoke.setUpdater([this](Particle &p)
                        {
@@ -33,6 +32,7 @@ FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
                                 p.pos = spawn_pos + utils::Vector2f{randf(-50,50), randf(0, 10.f)};
                                 p.vel = {30+randf(-20, 20), randf(40, 50)};
                                 p.scale = {10.2, 10.2};
+                                p.life_time = 2.f;
                                 return p; });
     m_smoke.setRepeat(true);
 
