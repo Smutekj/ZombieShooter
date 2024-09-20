@@ -44,9 +44,8 @@ function Spawner(spawn_pos, spawn_vel)
     
     p.pos.x = spawn_pos.x + dr.x;
     p.pos.y = spawn_pos.y + dr.y;
-    print(spawn_vel.x, spawn_vel.y);
     local norm = math.sqrt(dr.x*dr.x + dr.y*dr.y);
-    p.vel.x = dr.x/norm*speed +spawn_vel.x/600.;
+    p.vel.x = dr.x/norm*speed + spawn_vel.x/600.;
     p.vel.y = dr.y/norm*speed + spawn_vel.y/600.;
     p.angle = angle(dr)
     p.life_time = 0.5;

@@ -31,6 +31,10 @@ namespace utils
     [[nodiscard]] utils::Vector2i cellCoords(utils::Vector2i r_coord) const;
     [[nodiscard]] utils::Vector2i cellCoords(size_t cell_index) const;
 
+    utils::Vector2f getSize() const;
+    float getSizeX() const;
+    float getSizeY() const;
+
     size_t getNCells() const;
   };
 

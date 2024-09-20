@@ -3,6 +3,9 @@
 
 #include <memory>
 #include <string>
+#include <filesystem>
+#include <unordered_map>
+
 
 #ifdef __cplusplus
 extern "C"
@@ -29,6 +32,7 @@ class LuaWrapper
 {
 public:
     static LuaWrapper *getSingleton();
+    static bool loadScript(const std::string& script_name);
     bool doString(const std::string &command);
     bool doFile(const std::string &filename);
     // bool runScript(const std::string& script_name, const std::string& function_name);
@@ -45,7 +49,10 @@ private:
 private:
     std::shared_ptr<spdlog::logger> m_logger;
     std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ringbuffer_sink = nullptr;
+
+    static std::unordered_map<std::string, std::filesystem::file_time_type> m_script2last_change; 
 };
+
 
 void reportErrors(lua_State *luaState, int status);
 

@@ -84,6 +84,7 @@ public:
     void transformCorners();
     void extractBoundaries();
 
+
 private:
     bool isAtBoundary(int ix, int iy) const;
     bool isWall(Direction dir, int ix, int iy) const;

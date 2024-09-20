@@ -20,7 +20,18 @@ public:
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
+    void setMaxSpeed(float max_speed);
+
+    float getMaxSpeed() const;
+
+public:
+
+    int m_health = 200;
+    int m_max_health = 200;
+
 private:
+    float m_max_speed = 100.f;
+
     VisionField m_vision;
     VertexArray m_vision_verts;
 };
@@ -143,6 +154,8 @@ private:
 
     bool m_is_avoiding = false;
 
+    int m_pathfinding_timer = 0;
+    int m_pathfinding_cd = 150;
     std::string m_script_name = "basicai.lua";
 };
 
@@ -176,7 +189,7 @@ public:
         readDataFromScript();
     }
 
-    const std::string&  getScriptName() const
+    const std::string &getScriptName() const
     {
         return m_script_name;
     }
@@ -225,8 +238,10 @@ public:
     }
 
     int m_owner_entity_id = -1;
+
 private:
     void readDataFromScript();
+
 protected:
     // ProjectileTarget m_target = nullptr;
     utils::Vector2f m_last_target_pos = {0, 0};
@@ -276,8 +291,6 @@ private:
     float m_lifetime = 500000.f;
 
     std::unique_ptr<Particles> m_particles;
-
-    
 };
 class Shield : public GameObject
 {

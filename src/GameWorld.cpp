@@ -36,6 +36,9 @@ GameWorld::GameWorld()
     m_pathfinder = std::make_shared<pathfinding::PathFinder>(*m_cdt);
     loadTextures();
 
+    LuaWrapper::loadScript("globals.lua");
+    LuaWrapper::loadScript("quests.lua");
+
     try 
     {
         m_logger = spdlog::basic_logger_mt("general", "logs/general.txt");
@@ -359,17 +362,6 @@ std::shared_ptr<GameObject> GameWorld::get(int entity_id) const
         return nullptr;
     }
     return m_entities.at(entity_id);
-}
-template <class EntityType>
-std::shared_ptr<EntityType> GameWorld::get(const std::string &name) const
-{
-    auto obj_ptr = get(name);
-    if (obj_ptr)
-    {
-        assert(dynamic_cast<EntityType *>(obj_ptr) != nullptr);
-        return std::shared_ptr<EntityType>{static_cast<EntityType &>(*obj_ptr)};
-    }
-    return nullptr;
 }
 
 std::shared_ptr<GameObject> GameWorld::get(const std::string name) const

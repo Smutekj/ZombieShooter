@@ -133,10 +133,10 @@ Application::Application(int width, int height) : m_window(width, height),
     p_player = world.addObject(ObjectType::Player, "Player");
     p_player->setPosition({500, 500});
     world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
-    
+
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -144,6 +144,7 @@ Application::Application(int width, int height) : m_window(width, height),
             auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
             new_enemy->setPosition(rand_pos);
             static_cast<Enemy &>(*new_enemy).m_target = p_player.get();
+            static_cast<Enemy &>(*new_enemy).m_target_pos = p_player->getPosition();
         }
     }
 
@@ -177,7 +178,7 @@ Application::Application(int width, int height) : m_window(width, height),
     wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
     auto &light_layer = m_layers.addLayer("Light", 150, options);
     light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
-    // light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
     light_layer.addEffect(std::make_unique<LightCombine>(width, height));
     light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
     light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
@@ -222,7 +223,7 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setSize(m_window.getSize());
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
-    m_layers.activate("Light");
+    // m_layers.activate("Light");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -308,7 +309,6 @@ void Application::onKeyPress(SDL_Keycode key)
         changeShield();
         break;
     case SDLK_SPACE:
-        m_window_renderer.m_view.setCenter(p_player->getPosition());
         fireProjectile(mouse_pos, p_player->getPosition());
         break;
     }
@@ -348,14 +348,11 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     if (event.button == SDL_BUTTON_MIDDLE)
     {
         auto mouse_pos2 = m_window_renderer.getMouseInWorld();
-        std::cout << mouse_pos.x << " " << mouse_pos.y << "\n";
         m_wheel_is_held = false;
     }
     if (isKeyPressed(SDL_SCANCODE_LCTRL) && event.button == SDL_BUTTON_RIGHT)
     {
-        std::cout << "mouse: " << m_window_renderer.m_view.getScale().x << " " << m_window_renderer.m_view.getScale().y << "\n";
         auto map_cell = m_map->coordToCell(mouse_pos.x, mouse_pos.y);
-        std::cout << m_map->cellCoordX(map_cell) << " " << m_map->cellCoordY(map_cell) << "\n";
         m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {5, 5});
         auto &cdt = GameWorld::getWorld().getTriangulation();
         updateTriangulation(cdt, *m_map, m_surfaces);
@@ -413,7 +410,6 @@ enum class SpellId
 struct Spell
 {
 
-
     std::string m_script_effect_name = "";
     SpellId id = SpellId::FireBolt;
 };
@@ -435,12 +431,48 @@ void Application::changeShield()
     auto shield = world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
 }
 
-void moveView(utils::Vector2f dr, Renderer &target)
+View m_default_view;
+
+void Application::moveView(utils::Vector2f dr, Renderer &target)
 {
-    auto &view = target.m_view;
+    auto view = target.m_view;
     auto old_view_center = view.getCenter();
     auto new_view_center = old_view_center - (dr);
     view.setCenter(new_view_center.x, new_view_center.y);
+
+    auto player = GameWorld::getWorld().get<PlayerEntity>("Player");
+    if (!player)
+    {
+        return;
+    }
+    //! look from higher distance when boosting
+    // float booster_ratio = norm(player->m_vel) / player->getMaxSpeed();
+    // view.setSize(m_default_view.getScale() * (1 + booster_ratio / 3.f));
+
+    auto threshold = view.getScale() / 2.f - view.getScale() / 3.f;
+    auto dx = player->getPosition().x - view.getCenter().x;
+    auto dy = player->getPosition().y - view.getCenter().y;
+    auto view_max = view.getCenter() + view.getScale() / 2.f;
+    auto view_min = view.getCenter() - view.getScale() / 2.f;
+
+    //! move view when approaching sides
+    if (dx > threshold.x && view_max.x < m_map->getSizeX())
+    {
+        view.setCenter(view.getCenter() + utils::Vector2f{dx - threshold.x, 0});
+    }
+    else if (dx < -threshold.x && view_min.x > 0)
+    {
+        view.setCenter(view.getCenter() + utils::Vector2f{dx + threshold.x, 0});
+    }
+    if (dy > threshold.y && view_max.y < m_map->getSizeY())
+    {
+        view.setCenter(view.getCenter() + utils::Vector2f{0, dy - threshold.y});
+    }
+    else if (dy < -threshold.y && view_min.y > 0)
+    {
+        view.setCenter(view.getCenter() + utils::Vector2f{0, dy + threshold.y});
+    }
+    target.m_view = view;
 }
 
 float inline dir2angle(const utils::Vector2f &dir)
@@ -460,9 +492,13 @@ void Application::update(float dt = 0.016f)
             moveView(dr, m_window_renderer);
         }
     }
+    else
+    {
+        moveView({0, 0}, m_window_renderer);
+    }
 
     auto &world = GameWorld::getWorld();
-    auto p_player = world.get("Player");
+    auto p_player = world.get<PlayerEntity>("Player");
     if (p_player)
     {
         p_player->m_vel.x = 30.f * ((int)m_is_moving_right - (int)m_is_moving_left);
@@ -489,28 +525,9 @@ void Application::update(float dt = 0.016f)
     auto wall_color = m_ui->getBackgroundColor();
     // drawTriangles(world.getTriangulation(), wall_canvas, wall_color);
 
-    auto lua = LuaWrapper::getSingleton();
-    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/level1.lua");
-    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "Update");
-    if (processFunc.isFunction())
-    {
-        try
-        {
-            processFunc(&m_time);
-        }
-        catch (std::exception e)
-        {
-            std::cout << e.what() << " !\n";
-        }
-    }
-
     //! draw world
     m_layers.clearAllLayers();
     world.draw(m_layers);
-
-    auto &light_canvas = m_layers.getCanvas("Light");
-    light_canvas.m_view = m_window_renderer.m_view;
-    light_canvas.drawCricleBatched({mouse_coords.x, mouse_coords.y}, 45.f, 200, 300, {1,1,1,1});
 
     //! clear and draw into scene
     m_scene_canvas.clear({0, 0, 0, 0});
@@ -552,19 +569,27 @@ void Application::update(float dt = 0.016f)
     text.setScale(1, 1);
     text.setFont(m_font);
     text.setColor({255, 255, 255, 255});
-    std::string text_test = "Quest: ...";
+    std::string text_test = "Frame time: ... " + std::to_string(m_avg_frame_time.avg);
     text.setText(text_test);
-    Sprite2 a(m_font->getTexture());
-    a.setPosition(scene_size / 2.f);
-    a.setScale(scene_size / 2.f);
-    m_window_renderer.m_view.setCenter(a.getPosition());
-    m_window_renderer.m_view.setSize(scene_size);
     m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
+    
+    Sprite2 health_bar(*m_textures.get("bomb"));
+    health_bar.m_texture_handles[0] = 0;
+    
+    float x_scale = p_player->m_health/(double)p_player->m_max_health;
+    health_bar.setPosition(150,570);
+    health_bar.setScale(100, 15);
+    m_window_renderer.drawSprite(health_bar, "healthBar", GL_DYNAMIC_DRAW);
+    m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] =x_scale;
     m_window_renderer.drawAll();
+    
     m_window_renderer.m_view = old_view;
+
+
 
     m_ui->draw(m_window);
 }
+
 
 void inline gameLoop(void *mainLoopArg)
 {
@@ -585,7 +610,7 @@ void inline gameLoop(void *mainLoopArg)
 
     // std::cout << "frame took: " << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic) << "\n";
     double dt = (double)(toc - tic) / CLOCKS_PER_SEC * 1000.f;
-    std::cout << "frame took: " << (dt) << "\n";
+    p_app->m_avg_frame_time.addNumber(dt);
     // SDL_Delay(10);
 #ifdef __EMSCRIPTEN__
     // emscripten_trace_record_frame_end();

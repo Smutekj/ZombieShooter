@@ -33,6 +33,21 @@ namespace cdt{
 
 
 
+struct Averager
+{
+    void addNumber(double num)
+    {
+        data.push_back(num);
+        if(data.size() >= averaging_interval)
+        {
+            data.pop_front();
+        }
+        avg = std::accumulate(data.begin(), data.end(), 0.) / data.size();
+    }
+    std::deque<double> data;
+    double avg = 0.;
+    int averaging_interval = 60;
+};
 
 void gameLoop(void *mainLoopArg);
 
@@ -170,6 +185,8 @@ private:
     void onMouseButtonRelease(SDL_MouseButtonEvent event);
     void onWindowResize(SDL_WindowEvent event);
     void onWheelMove(SDL_MouseWheelEvent event);
+    
+    void moveView(utils::Vector2f dr, Renderer &target);
     bool isKeyPressed(SDL_Scancode key)
     {
         auto *keystate = SDL_GetKeyboardState(NULL);
@@ -218,4 +235,6 @@ private:
     std::shared_ptr<GameObject> p_player;
 
     std::shared_ptr<Font> m_font;
+
+    Averager m_avg_frame_time;
 };

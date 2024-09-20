@@ -18,22 +18,22 @@ Quest =
 };
 
 
-function setContains(set, key)
+local function setContains(set, key)
     return set[key] ~= nil
 end
 
 
 function updateCounters(entity)
+    if setContains(Quest.entity_types, 1) then
+        print("GOT HERE!!!");
+        -- Quest.counter = Quest.counter - 1;
+        -- if Quest.counter <= 0 then
+        --     print("QUEST FINISHED!");
+        --     Quest.onFinish();
+        --     return true;
+        -- end
+    end
     return false;
-    -- if setContains(Quest.entity_types, entity.type) then
-    --     -- Quest.counter = Quest.counter - 1;
-    --     -- if Quest.counter <= 0 then
-    --     --     print("QUEST FINISHED!");
-    --     --     Quest.onFinish();
-    --     --     return true;
-    --     -- end
-    -- end
-    -- return false;
 end
 
 function onFinish()
@@ -49,8 +49,8 @@ Quests =
 }
 
 
--- Quests.logic = updateCounters;
-Quests.onFinish = onFinish;
+Quest.logic = updateCounters;
+Quest.onFinish = onFinish;
 Quests[Quest.id] = Quest;
 
 return 0;

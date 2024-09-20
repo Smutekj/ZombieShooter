@@ -29,9 +29,21 @@ extern "C"
 #define M_PIf std::numbers::pi_v<float>
 #endif
 
+
+
+
 namespace cdt
 {
     template class Triangulation<utils::Vector2f>;
+}
+
+inline void truncate(utils::Vector2f &vec, float max_value)
+{
+    auto speed = norm(vec);
+    if (speed > max_value)
+    {
+        vec *= max_value / speed;
+    }
 }
 
 static float dir2angle(utils::Vector2f dir)
@@ -41,6 +53,7 @@ static float dir2angle(utils::Vector2f dir)
 
 void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color)
 {
+    radius /= std::sqrt(2.f);
     auto &canvas = layers.getCanvas("Unit");
 
     float thickness = radius / 10.f;
@@ -68,14 +81,27 @@ PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
       m_vision_verts(world->m_shaders.get("VisionLight2"))
 {
     m_collision_shape = std::make_unique<Polygon>(4);
-    setSize({6.f, 6.f});
+    setSize({20.f, 20.f});
+}
+
+void PlayerEntity::setMaxSpeed(float max_speed)
+{
+    m_max_speed = max_speed;
+}
+
+float PlayerEntity::getMaxSpeed() const
+{
+    return m_max_speed;
 }
 
 void PlayerEntity::update(float dt)
 {
     utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
     m_vision.contrstuctField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
+
+    truncate(m_vel, m_max_speed);
 }
+
 
 void PlayerEntity::onCreation()
 {
@@ -84,7 +110,7 @@ void PlayerEntity::onDestruction() {}
 void PlayerEntity::draw(LayersHolder &layers)
 {
 
-    drawAgent(m_pos, m_size.x * 2.f, layers, {0, 0, 25, 1});
+    drawAgent(m_pos, m_size.x, layers, {0, 0, 25, 1});
 
     auto &light_canvas = layers.getCanvas("Light");
     auto &shader = light_canvas.getShader("VisionLight");
@@ -96,17 +122,69 @@ void PlayerEntity::draw(LayersHolder &layers)
     {
         const auto &pos = m_vision_verts[vert_ind].pos;
         auto dr = pos - m_pos;
-        m_vision_verts[vert_ind].tex_coord = {dr}; //! we use this information in a shader
-        m_vision_verts[vert_ind].color = {1,1,1,1}; //! we use this information in a shader
-
+        m_vision_verts[vert_ind].tex_coord = {dr};     //! we use this information in a shader
+        m_vision_verts[vert_ind].color = {1, 1, 1, 1}; //! we use this information in a shader
     }
     light_canvas.drawVertices(m_vision_verts, GL_DYNAMIC_DRAW);
 
     // light_canvas.drawCricleBatched(m_pos + m_vel*2.f, 50.f, Color{100,0,1,1.0});
 }
 
-void PlayerEntity::onCollisionWith(GameObject &obj, CollisionData &c_data) {
+void PlayerEntity::onCollisionWith(GameObject &obj, CollisionData &c_data)
+{
 
+    if (!LuaWrapper::loadScript("collisions"))
+    {
+        return;
+    }
+    auto lua = LuaWrapper::getSingleton();
+
+    switch (obj.getType())
+    {
+    case ObjectType::Bullet:
+    {
+        auto bullet = static_cast<Projectile *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "PlayerBulletCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN PlayerBulletCollision: " << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Player:
+    {
+        auto bullet = static_cast<PlayerEntity *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyPlayerCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EnemyPlayerCollision" << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Wall:
+    {
+        auto wall = static_cast<Wall *>(&obj);
+        try
+        {
+
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyWallCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EnemyWall" << e.what() << "\n";
+        }
+        break;
+    }
+    }
 };
 
 Wall::Wall(TextureHolder &textures, utils::Vector2f from, utils::Vector2f to)
@@ -199,7 +277,7 @@ Color getColor(lua_State *state, const std::string &var_name)
     }
     catch (std::exception &e)
     {
-        std::cout << e.what() << "\n";
+        std::cout << "ERROR IN getColor" << e.what() << "\n";
     }
     return Color();
 }
@@ -213,7 +291,7 @@ VarType getVariable(lua_State *state, const std::string &var_name)
     }
     catch (std::exception &e)
     {
-        std::cout << e.what() << "\n";
+        std::cout << "ERROR IN getVariable" << e.what() << "\n";
     }
     static_assert(std::is_default_constructible_v<VarType>, "Add default constructor!");
     return VarType();
@@ -236,10 +314,9 @@ void Projectile::readDataFromScript()
         auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
         m_bolt_particles.setInitColor(init_color);
         m_bolt_particles.setFinalColor(final_color);
-        
+
         m_bolt_canvas_name = getVariable<std::string>(lua->m_lua_state, "BoltCanvas");
         m_tail_canvas_name = getVariable<std::string>(lua->m_lua_state, "TailCanvas");
-
     }
 
     auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
@@ -257,7 +334,7 @@ void Projectile::readDataFromScript()
                 }
                 catch (std::exception &e)
                 {
-                    std::cout << e.what() << " !";
+                    std::cout << "ERROR IN Spawner" << e.what() << " !";
                 }
                 return p;
             });
@@ -273,7 +350,7 @@ void Projectile::readDataFromScript()
                 }
                 catch (std::exception &e)
                 {
-                    std::cout << e.what() << " !";
+                    std::cout << "ERROR IN Spawner" << e.what() << " !";
                 }
             });
     }
@@ -337,7 +414,7 @@ void Projectile::draw(LayersHolder &layers)
 
     m_bolt_particles.setSpawnPos(m_pos);
     m_bolt_particles.update(0.01f);
-    if(p_tail_canvas)
+    if (p_tail_canvas)
     {
         m_bolt_particles.draw(*p_tail_canvas);
     }
@@ -351,7 +428,7 @@ void Projectile::draw(LayersHolder &layers)
         bolt_sprite.setPosition(m_pos);
         bolt_sprite.setRotation(m_angle);
         bolt_sprite.setScale(m_size);
-        if(p_bolt_canvas)
+        if (p_bolt_canvas)
         {
             p_bolt_canvas->drawSprite(bolt_sprite, m_shader_name, GL_DYNAMIC_DRAW);
         }
@@ -362,7 +439,6 @@ void Projectile::update(float dt)
 {
     if (m_target)
     {
-
         if (m_target->isDead())
         {
             m_target = nullptr;
@@ -394,29 +470,24 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
     : m_collision_system(&collider), m_pf(&pf), m_player(player), GameObject(&GameWorld::getWorld(), textures, ObjectType::Enemy)
 {
     m_collision_shape = std::make_unique<Polygon>(4);
-    setSize({10.f, 10.f});
+    setSize({20.f, 20.f});
     // m_target_pos = player->getPosition();
 }
 
 Enemy::~Enemy() {}
 
-inline void truncate(utils::Vector2f &vec, float max_value)
-{
-    auto speed = norm(vec);
-    if (speed > max_value)
-    {
-        vec *= max_value / speed;
-    }
-}
+
 
 void Enemy::doScript()
 {
     auto lua = LuaWrapper::getSingleton();
-    // lua.runScript("basicai.lua" ,"UpdateAI")
-    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, ("../scripts/" + m_script_name).c_str());
-    if (scriptLoadStatus)
+
+    if (!LuaWrapper::loadScript("collisions.lua"))
     {
-        spdlog::get("lua_logger")->error("Script with name " + m_script_name + " not done");
+        return;
+    }
+    if (!LuaWrapper::loadScript("basicai.lua"))
+    {
         return;
     }
 
@@ -429,7 +500,7 @@ void Enemy::doScript()
         }
         catch (std::exception &e)
         {
-            std::cout << e.what() << " !\n";
+            std::cout << "ERROR IN updateAI" << e.what() << " !\n";
         }
     }
 }
@@ -449,17 +520,17 @@ void Enemy::update(float dt)
         m_target_pos = m_target->getPosition();
     }
 
-    if (m_pf && m_target_pos.x > 0)
+    if (m_pf && m_target_pos.x > 0 && m_target_pos.y > 0)
     {
-        if (utils::norm2(m_target_pos - m_pos) <= 500 * 500 && m_state == AIState::Chasing)
+        if (m_pathfinding_timer++ >= m_pathfinding_cd)
         {
-            // m_color = Color(0, 26, 1, 1);
-            auto path_data = m_pf->doPathFinding({m_pos.x, m_pos.y}, {m_target_pos.x, m_target_pos.y}, m_size.x);
-            m_next_path = path_data.path.at(1);
-        }
-        else
-        {
-            // m_color = Color(20, 0, 0, 1);
+            m_pathfinding_timer = 0;
+            if (m_state != AIState::Attacking)
+            {
+                // m_color = Color(0, 26, 1, 1);
+                auto path_data = m_pf->doPathFinding({m_pos.x, m_pos.y}, {m_target_pos.x, m_target_pos.y}, m_size.x);
+                m_next_path = path_data.path.at(1);
+            }
         }
     }
 
@@ -481,28 +552,67 @@ void Enemy::update(float dt)
 
 void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
-    auto lua = LuaWrapper::getSingleton();
-    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/collisions.lua");
 
-    if (scriptLoadStatus)
-    {
-        spdlog::get("lua_logger")->error("Script with name " + m_script_name + " not done");
-        return;
-    }
-    auto collider = luabridge::getGlobal(lua->m_lua_state, "ResolveCollision");
+    auto lua = LuaWrapper::getSingleton();
 
     switch (obj.getType())
     {
-    case ObjectType::Bullet:
+    case ObjectType::Enemy:
     {
-        auto bullet = static_cast<Projectile*>(&obj);
+        auto bullet = static_cast<Enemy *>(&obj);
         try
         {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyEnemyCollision");
             collider(this, &obj);
         }
         catch (std::exception &e)
         {
-            std::cout << e.what() << "\n";
+            std::cout << "ERROR IN EnemyEnemyCollision: " << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Bullet:
+    {
+        auto bullet = static_cast<Projectile *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyBulletCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EnemyBulletCollision: " << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Player:
+    {
+        auto bullet = static_cast<PlayerEntity *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyPlayerCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EnemyPlayerCollision: " << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Wall:
+    {
+        auto wall = static_cast<Wall *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyWallCollision");
+            if (collider.isFunction())
+            {
+                collider(this, &obj);
+            }
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EnemyWallCollision: " << e.what() << "\n";
         }
         break;
     }
@@ -519,6 +629,7 @@ void Enemy::onDestruction()
 void Enemy::draw(LayersHolder &layers)
 {
     drawAgent(m_pos, m_size.x, layers, m_color);
+    // layers.getCanvas("Unit").drawLineBatched(m_pos, m_target_pos, 0.5, {0, 1, 0, 1});
 }
 
 void Enemy::avoidMeteors()
@@ -533,7 +644,7 @@ std::unordered_map<Multiplier, float> Enemy::m_force_multipliers = {
 std::unordered_map<Multiplier, float> Enemy::m_force_ranges = {
     {Multiplier::ALIGN, 20.f},
     {Multiplier::AVOID, 30.f},
-    {Multiplier::SCATTER, 30.f},
+    {Multiplier::SCATTER, 3000.f},
     {Multiplier::SEEK, 10.f}};
 
 void Enemy::boidSteering()
@@ -674,8 +785,6 @@ void OrbitingShield::draw(LayersHolder &layers)
     m_particles->draw(particle_canvas);
 }
 
-
-
 Shield::Shield(TextureHolder &textures)
     : GameObject(&GameWorld::getWorld(), textures, ObjectType::Orbiter)
 {
@@ -741,7 +850,7 @@ void OrbitingShield::readDataFromScript()
         //     {
         //         std::cerr << e.what() << '\n';
         //     }
-            
+
         // }
         auto init_color = getVariable<Color>(lua->m_lua_state, "InitColor");
         auto final_color = getVariable<Color>(lua->m_lua_state, "FinalColor");
@@ -762,11 +871,11 @@ void OrbitingShield::readDataFromScript()
                 Particle p;
                 try
                 {
-                    auto& world = GameWorld::getWorld();
+                    auto &world = GameWorld::getWorld();
                     auto parent_id = world.m_scene.getNode(getId()).parent;
                     auto owner = world.get(parent_id);
-                    auto vel = m_vel; 
-                    if(owner)
+                    auto vel = m_vel;
+                    if (owner)
                     {
                         vel = owner->m_vel;
                     }
@@ -774,7 +883,7 @@ void OrbitingShield::readDataFromScript()
                 }
                 catch (std::exception &e)
                 {
-                    std::cout << e.what() << " !";
+                    std::cout << "ERROR IN Spawner: " << e.what() << " !";
                 }
                 return p;
             });
@@ -790,7 +899,7 @@ void OrbitingShield::readDataFromScript()
                 }
                 catch (std::exception &e)
                 {
-                    std::cout << e.what() << " !";
+                    std::cout << "ERROR IN Updater: " << e.what() << " !";
                 }
             });
     }
@@ -807,7 +916,7 @@ void OrbitingShield::readDataFromScript()
 
     auto tail_shader_id = getVariable<std::string>(lua->m_lua_state, "TailShader");
     auto shader_name = getVariable<std::string>(lua->m_lua_state, "BoltShader");
-    if(shader_name != "")
+    if (shader_name != "")
     {
         m_shader_name = shader_name;
     }

@@ -3,14 +3,14 @@
 
 
 
-InitColor = Color(0., 0.5, 0.1, 0.);
-FinalColor = Color(0.2, 1., 0., 0.);
+InitColor = Color(10., 0.5, 0.1, 1.);
+FinalColor = Color(20., 10., 0., 1.);
 SpawnPeriod = 1;
 
 TailShader = ""
 BoltShader = "fireBolt"
 
-TailCanvas = "Smoke";
+TailCanvas = "Wall";
 BoltCanvas = "Fire";
 
 ParticleColors = {
@@ -24,8 +24,8 @@ BoltColor = {r = 20.,g = 0.2,b = 0.,a = 1.}
 
 function Updater(particle)
     particle.pos = particle.pos + particle.vel;
-    p.scale.x = p.scale.x + 10.2;
-    p.scale.y = p.scale.y + 10.2;
+    p.scale.x = p.scale.x - 0.2;
+    p.scale.y = p.scale.y -0.2;
     p.angle = p.angle + 10;
     return particle;
 end

@@ -106,9 +106,8 @@ public:
     RigidBody &getRigidBody();
     
     int getId() const;
-    ObjectType getType() const;
-
-
+    const ObjectType& getType() const;
+    
     void setSize(utils::Vector2f size);
 
 public:

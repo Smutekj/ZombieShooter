@@ -86,8 +86,24 @@ Grid::Grid(utils::Vector2i n_cells, utils::Vector2f box_size)
     , m_cell_size(box_size.x/n_cells.x, box_size.y/n_cells.y) {}
 
 
+
+//! \brief computes total number of cells in grid;
+//! \returns total number of cells in the grid
 size_t Grid::getNCells() const{
     return m_cell_count.x*m_cell_count.y;
+}
+
+//! \returns size of the grid in the cell_size units
+utils::Vector2f Grid::getSize() const{
+    return {m_cell_count.x*m_cell_size.x, m_cell_count.y*m_cell_size.y};
+}
+//! \returns size of the grid in the cell_size units
+float Grid::getSizeX() const{
+    return m_cell_count.x*m_cell_size.x;
+}
+//! \returns size of the grid in the cell_size units
+float Grid::getSizeY() const{
+    return  m_cell_count.y*m_cell_size.y;
 }
 
 } // namespace cdt

@@ -457,3 +457,15 @@ std::shared_ptr<EntityType> GameWorld::addObject(const std::string name, Args...
     m_to_add.push(new_obj);
     return ptr_obj;
 }
+
+template <class EntityType>
+std::shared_ptr<EntityType> GameWorld::get(const std::string &name) const
+{
+    auto obj_ptr = get(name);
+    if (obj_ptr)
+    {
+        std::shared_ptr<EntityType> new_ptr = std::dynamic_pointer_cast<EntityType> (obj_ptr);
+        return new_ptr;
+    }
+    return nullptr;
+}

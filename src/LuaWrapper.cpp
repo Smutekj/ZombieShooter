@@ -12,6 +12,7 @@
 
 //! Code for making the singleton work (Likely stolen)
 LuaWrapper *LuaWrapper::s_instance = nullptr;
+std::unordered_map<std::string, std::filesystem::file_time_type> LuaWrapper::m_script2last_change = {};
 
 LuaWrapper *LuaWrapper::getSingleton()
 {
@@ -20,6 +21,38 @@ LuaWrapper *LuaWrapper::getSingleton()
         s_instance = new LuaWrapper();
     }
     return s_instance;
+}
+
+bool LuaWrapper::loadScript(const std::string &script_name)
+{
+
+    std::filesystem::path path = "../scripts/" + script_name;
+    auto num_chars = script_name.length();
+    if (num_chars >= 4 && script_name.substr(num_chars - 4, num_chars) != ".lua") 
+    {
+        path += ".lua";
+    }
+
+    auto lua = getSingleton();
+    auto last_change = std::filesystem::last_write_time(path);
+
+    if (m_script2last_change.count(script_name) > 0 && m_script2last_change.at(script_name) == last_change)
+    {
+        return true; //! there was no change since last time in the script so we return
+    }
+
+    m_script2last_change[script_name] = last_change;
+
+    //! load script
+    auto script_load_status = luaL_dofile(lua->m_lua_state, path.c_str());
+
+    if (script_load_status)
+    {
+        spdlog::get("lua_logger")->error("Script with name " + script_name + " not done");
+        return false;
+    }
+
+     return true;
 }
 
 LuaWrapper::LuaWrapper()
@@ -97,7 +130,7 @@ static Projectile *createProjectile(lua_State *state)
 
     auto new_obj = GameWorld::getWorld().addObject("Bullet", object_name);
 
-    return static_cast<Projectile*>(new_obj.get());
+    return static_cast<Projectile *>(new_obj.get());
 }
 
 static Enemy *createEnemy(lua_State *state)
@@ -116,7 +149,7 @@ static Enemy *createEnemy(lua_State *state)
 
     auto new_obj = GameWorld::getWorld().addObject("Enemy", object_name);
 
-    return static_cast<Enemy*>(new_obj.get());
+    return static_cast<Enemy *>(new_obj.get());
 }
 
 static GameObject *createObject2(lua_State *state)
@@ -469,13 +502,12 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("a", &Color::a)
         .endClass();
 
-
-
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<GameObject>("GameObject")
         .addProperty("x", &GameObject::getX, &GameObject::setX)
         .addProperty("y", &GameObject::getY, &GameObject::setY)
         .addProperty("target", &GameObject::getTarget, &GameObject::setTarget)
+        .addProperty("target_pos", &GameObject::m_target_pos)
         .addProperty("id", &GameObject::getId)
         .addProperty("type", &GameObject::getType)
         .addProperty("vel", &GameObject::m_vel)
@@ -485,12 +517,19 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("state", &Enemy::getState, &Enemy::setState)
         .addProperty("script", &Enemy::getScript, &Enemy::setScript)
         .addProperty("health", &Enemy::m_health)
+        .addProperty("type", &Enemy::m_health)
         .endClass()
         .deriveClass<Projectile, GameObject>("Projectile")
         .addProperty("max_vel", &Projectile::getMaxVel, &Projectile::setMaxVel)
         .addProperty("acc", &Projectile::getAcc, &Projectile::setAcc)
         .addProperty("owner", &Projectile::m_owner_entity_id)
         .addFunction("setScript", &Projectile::setScriptName)
+        .endClass()
+        .deriveClass<PlayerEntity, GameObject>("Player")
+        .addProperty("max_vel", &PlayerEntity::getMaxSpeed, &PlayerEntity::setMaxSpeed)
+        .addProperty("health", &PlayerEntity::m_health)
+        .endClass()
+        .deriveClass<Wall, GameObject>("Wall")
         .endClass();
 }
 
@@ -545,7 +584,6 @@ std::string LuaWrapper::getLastError()
     return "";
 }
 
-
 void reportErrors(lua_State *lua_state, int status)
 {
     if (status == 0)
@@ -559,4 +597,3 @@ void reportErrors(lua_State *lua_state, int status)
     // remove error message from Lua state
     lua_pop(lua_state, 1);
 }
-
