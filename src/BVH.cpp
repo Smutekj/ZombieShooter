@@ -512,7 +512,7 @@ void BoundingVolumeTree::moveNodeUp(int going_up_index)
 
 
 //! \brief finds object indices that intersect a given \p rect
-std::vector<int> BoundingVolumeTree::findIntersectingLeaves(AABB rect)
+std::vector<int> BoundingVolumeTree::findIntersectingLeaves(AABB rect) const
 {
     std::vector<int> intersecting_leaves;
     if(object2node_indices.empty()) //! if there are no objects there can be no intersections

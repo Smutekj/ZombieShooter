@@ -2,14 +2,12 @@
 
 precision mediump float;    
 
-#include
-
 in vec2 v_tex_coord;                          
 in vec4 v_color;       
 
 out vec4 FragColor;
 
-uniform float u_time_multiplier = 5.5;
+uniform float u_time_multiplier = 0.5;
 uniform float u_time;
 
 uniform vec2 u_shape_vec = vec2(1.,0.7);

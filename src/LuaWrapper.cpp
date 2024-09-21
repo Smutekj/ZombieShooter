@@ -28,7 +28,7 @@ bool LuaWrapper::loadScript(const std::string &script_name)
 
     std::filesystem::path path = "../scripts/" + script_name;
     auto num_chars = script_name.length();
-    if (num_chars >= 4 && script_name.substr(num_chars - 4, num_chars) != ".lua") 
+    if (num_chars >= 4 && script_name.substr(num_chars - 4, num_chars) != ".lua")
     {
         path += ".lua";
     }
@@ -52,7 +52,7 @@ bool LuaWrapper::loadScript(const std::string &script_name)
         return false;
     }
 
-     return true;
+    return true;
 }
 
 LuaWrapper::LuaWrapper()
@@ -150,6 +150,30 @@ static Enemy *createEnemy(lua_State *state)
     auto new_obj = GameWorld::getWorld().addObject("Enemy", object_name);
 
     return static_cast<Enemy *>(new_obj.get());
+}
+
+static Event *createEvent(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 1 || num_args != 2)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 1 OR 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return nullptr;
+    }
+
+    std::string event_name = "Event";
+    std::string event_script = lua_tostring(state, 1);
+    if (num_args == 2)
+    {
+        event_name = lua_tostring(state, 2);
+    }
+
+    auto new_obj = GameWorld::getWorld().addObject<Event>(event_name, event_script);
+    return static_cast<Event *>(new_obj.get());
 }
 
 static GameObject *createObject2(lua_State *state)
@@ -438,31 +462,56 @@ std::string getName(lua_State *state)
     return name;
 };
 
+static Texture *getTexture(lua_State *lua_state)
+{
+    int num_args = lua_gettop(lua_state);
+    if (num_args != 1)
+    {
+        return nullptr;
+    }
+    auto &textures = GameWorld::getWorld().getTextrures();
+    std::string texture_id = lua_tostring(lua_state, 1);
+    return textures.get(texture_id).get();
+};
+
+static void drawSprite(lua_State *lua_state)
+{
+
+    auto &textures = GameWorld::getWorld().getTextrures();
+};
+
 //! \brief Registers functions with lua
 void LuaWrapper::initializeLuaFunctions()
 {
     lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
     lua_register(m_lua_state, "addEffect", addEffect);
-
     lua_register(m_lua_state, "setPosition", setPosition);
     lua_register(m_lua_state, "setTarget", setTarget);
     lua_register(m_lua_state, "setVelocity", setVelocity);
-
     lua_register(m_lua_state, "changeParentOf", changeParentOf);
 
     using namespace utils;
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginNamespace("draw")
+        .beginClass<LayersHolder>("layers")
+        .addFunction("drawSprite", &LayersHolder::drawSprite)
+        .addFunction("drawLine", &LayersHolder::drawLine)
+        .endClass()
+        .endNamespace();
 
     luabridge::getGlobalNamespace(m_lua_state)
         .addFunction("createObject", &createObject2)
         .addFunction("createProjectile", &createProjectile)
         .addFunction("createEnemy", &createEnemy)
+        .addFunction("createEvent", &createEvent)
         .addFunction("removeObject", &removeObject)
         .addFunction("removeObjects", &removeObjects)
         .addFunction("setPosition", &setPosition)
         .addFunction("setTarget", &setTarget)
         .addFunction("setVelocity", &setVelocity)
         .addFunction("getName", &getName)
-        .addFunction("getObject", &getObject);
+        .addFunction("getObject", &getObject)
+        .addFunction("getTexture", &getTexture);
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<utils::Vector2f>("Vec")
@@ -471,6 +520,31 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("y", &Vector2f::y)
         .addFunction("__add", &Vector2f::operator+)
         // .addFunction("__sub", &Vector2f::oerator-)
+        .endClass();
+
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<Color>("Color")
+        .addConstructor<void (*)(float, float, float, float)>()
+        .addProperty("r", &Color::r)
+        .addProperty("g", &Color::g)
+        .addProperty("b", &Color::b)
+        .addProperty("a", &Color::a)
+        .endClass();
+
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<Texture>("Texture")
+        .endClass()
+        .beginClass<Transform>("Transform")
+        .addProperty("pos", &Transform::getPosition, &Transform::setPosition)
+        .addProperty("scale", &Transform::getScale, &Transform::setScale)
+        .addProperty("angle", &Transform::getRotation, &Transform::setRotation)
+        .endClass()
+        .deriveClass<Rectangle2, Transform>("Rectangle")
+        .endClass()
+        .deriveClass<Sprite2, Rectangle2>("Sprite")
+        .addConstructor<void (*)()>()
+        .addProperty("color", &Sprite2::m_color)
+        .addFunction("setTexture", &Sprite2::setTextureP)
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
@@ -494,18 +568,11 @@ void LuaWrapper::initializeLuaFunctions()
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
-        .beginClass<Color>("Color")
-        .addConstructor<void (*)(float, float, float, float)>()
-        .addProperty("r", &Color::r)
-        .addProperty("g", &Color::g)
-        .addProperty("b", &Color::b)
-        .addProperty("a", &Color::a)
-        .endClass();
-
-    luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<GameObject>("GameObject")
         .addProperty("x", &GameObject::getX, &GameObject::setX)
         .addProperty("y", &GameObject::getY, &GameObject::setY)
+        .addProperty("pos", &GameObject::getPosition, &GameObject::setPosition)
+        .addProperty("angle", &GameObject::getAngle, &GameObject::setAngle)
         .addProperty("target", &GameObject::getTarget, &GameObject::setTarget)
         .addProperty("target_pos", &GameObject::m_target_pos)
         .addProperty("id", &GameObject::getId)
@@ -527,7 +594,11 @@ void LuaWrapper::initializeLuaFunctions()
         .endClass()
         .deriveClass<PlayerEntity, GameObject>("Player")
         .addProperty("max_vel", &PlayerEntity::getMaxSpeed, &PlayerEntity::setMaxSpeed)
+        .addProperty("vision_radius", &PlayerEntity::m_vision_radius)
         .addProperty("health", &PlayerEntity::m_health)
+        .endClass()
+        .deriveClass<Event, GameObject>("Event")
+        .addProperty("script_name", &Event::m_script_name)
         .endClass()
         .deriveClass<Wall, GameObject>("Wall")
         .endClass();

@@ -29,6 +29,16 @@ struct AABB
         return *this;
     }
 
+    utils::Vector2f getCenter()const
+    {
+      return (r_min + r_max) / 2.f;
+    }
+
+    utils::Vector2f getSize()const
+    {
+      return (r_max - r_min);
+    }
+
     bool isIn(const utils::Vector2f &r) const
     {
         return r.x <= r_max.x && r.x > r_min.x && r.y <= r_max.y && r.y > r_min.y;

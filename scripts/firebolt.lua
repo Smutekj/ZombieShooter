@@ -4,13 +4,13 @@
 
 
 InitColor = Color(10., 0.5, 0.1, 1.);
-FinalColor = Color(20., 10., 0., 1.);
+FinalColor = Color(20., 10., 0., 0.4);
 SpawnPeriod = 1;
 
 TailShader = ""
 BoltShader = "fireBolt"
 
-TailCanvas = "Wall";
+TailCanvas = "Unit";
 BoltCanvas = "Fire";
 
 ParticleColors = {

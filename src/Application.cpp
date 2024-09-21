@@ -122,11 +122,13 @@ Application::Application(int width, int height) : m_window(width, height),
     m_font = std::make_shared<Font>("arial.ttf");
     m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 50; ++i)
     {
         auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
         auto map_cell = m_map->coordToCell(rand_pos);
-        m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {4, 4});
+        int rx = 1 + rand() % 4;
+        int ry = 1 + rand() % 4;
+        m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {rx, ry});
     }
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
@@ -136,7 +138,7 @@ Application::Application(int width, int height) : m_window(width, height),
 
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 100; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -146,11 +148,6 @@ Application::Application(int width, int height) : m_window(width, height),
             static_cast<Enemy &>(*new_enemy).m_target = p_player.get();
             static_cast<Enemy &>(*new_enemy).m_target_pos = p_player->getPosition();
         }
-    }
-
-    for (int i = 0; i < 0; ++i)
-    {
-        fireProjectile(utils::Vector2f{0.f, 0.f}, p_player->getPosition());
     }
 
     std::filesystem::path path{"../Resources/"};
@@ -171,14 +168,14 @@ Application::Application(int width, int height) : m_window(width, height),
     unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
     auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
-    smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
+    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
     auto &fire_layer = m_layers.addLayer("Fire", 6, options);
     fire_layer.addEffect(std::make_unique<Bloom>(width, height));
     auto &wall_layer = m_layers.addLayer("Wall", 0, options);
     wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
     auto &light_layer = m_layers.addLayer("Light", 150, options);
     light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
-    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    // light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
     light_layer.addEffect(std::make_unique<LightCombine>(width, height));
     light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
     light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
@@ -257,7 +254,6 @@ void Application::handleInput()
         case SDL_KEYDOWN:
             onKeyPress(event.key.keysym.sym);
             break;
-
         case SDL_KEYUP:
             onKeyRelease(event.key.keysym.sym);
             break;
@@ -336,10 +332,33 @@ void Application::onMouseButtonPress(SDL_MouseButtonEvent event)
         m_old_view_center = m_window_renderer.m_view.getCenter();
         m_mouse_click_position = m_window_renderer.getMouseInWorld();
     }
+    else if (event.button == SDL_BUTTON_LEFT)
+    {
+        if (!m_is_selecting)
+        {
+            m_selection_click_pos = m_window_renderer.getMouseInWorld();
+            m_is_selecting = true;
+        }
+    }
 }
 void Application::onWindowResize(SDL_WindowEvent event)
 {
     m_window.setSize(event.data1, event.data2);
+}
+
+void Application::selectInWorld(const utils::Vector2f &left_select, const utils::Vector2f &right_select)
+{
+    auto &world = GameWorld::getWorld();
+
+    utils::Vector2f lower_left = {std::min(left_select.x, right_select.x), std::min(left_select.y, right_select.y)};
+    utils::Vector2f upper_right = {std::max(left_select.x, right_select.x), std::max(left_select.y, right_select.y)};
+    AABB selection_rect = {lower_left, upper_right};
+
+    auto selected_enemies = world.getCollider().findNearestObjects(ObjectType::Enemy, selection_rect);
+    if (!selected_enemies.empty())
+    {
+        p_player->setTarget(static_cast<Enemy *>(selected_enemies[0]));
+    }
 }
 
 void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
@@ -349,6 +368,11 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     {
         auto mouse_pos2 = m_window_renderer.getMouseInWorld();
         m_wheel_is_held = false;
+    }
+    else if (event.button == SDL_BUTTON_LEFT)
+    {
+        selectInWorld(m_selection_click_pos, m_window_renderer.getMouseInWorld());
+        m_is_selecting = false;
     }
     if (isKeyPressed(SDL_SCANCODE_LCTRL) && event.button == SDL_BUTTON_RIGHT)
     {
@@ -417,10 +441,19 @@ struct Spell
 void Application::fireProjectile(ProjectileTarget target, utils::Vector2f from)
 {
     auto &world = GameWorld::getWorld();
-    auto &projectile = static_cast<Projectile &>(*world.addObject(ObjectType::Bullet, "Projectile"));
-    projectile.setPosition(from);
-    projectile.setSize(10.f);
-    projectile.setTarget(target);
+    if (p_player->m_target)
+    {
+        if (p_player->m_target->isDead())
+        {
+            p_player->m_target = nullptr;
+            return;
+        }
+        auto &projectile = static_cast<Projectile &>(*world.addObject(ObjectType::Bullet, "Projectile"));
+        projectile.setScriptName("frostbolt");
+        projectile.setPosition(from);
+        projectile.setSize(10.f);
+        projectile.setTarget(p_player->m_target);
+    }
 }
 
 void Application::changeShield()
@@ -513,8 +546,8 @@ void Application::update(float dt = 0.016f)
             p_player->m_vel *= 3.f;
         }
     }
-    world.update(0.016f);
-    m_time += 0.016f;
+    world.update(0.1f);
+    m_time += 0.1f;
     //! set time in shaders
     Shader::m_time = m_time;
 
@@ -572,24 +605,21 @@ void Application::update(float dt = 0.016f)
     std::string text_test = "Frame time: ... " + std::to_string(m_avg_frame_time.avg);
     text.setText(text_test);
     m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
-    
+
     Sprite2 health_bar(*m_textures.get("bomb"));
     health_bar.m_texture_handles[0] = 0;
-    
-    float x_scale = p_player->m_health/(double)p_player->m_max_health;
-    health_bar.setPosition(150,570);
+
+    float x_scale = p_player->m_health / (double)p_player->m_max_health;
+    health_bar.setPosition(150, 570);
     health_bar.setScale(100, 15);
     m_window_renderer.drawSprite(health_bar, "healthBar", GL_DYNAMIC_DRAW);
-    m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] =x_scale;
+    m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] = x_scale;
     m_window_renderer.drawAll();
-    
+
     m_window_renderer.m_view = old_view;
-
-
 
     m_ui->draw(m_window);
 }
-
 
 void inline gameLoop(void *mainLoopArg)
 {
@@ -611,7 +641,11 @@ void inline gameLoop(void *mainLoopArg)
     // std::cout << "frame took: " << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic) << "\n";
     double dt = (double)(toc - tic) / CLOCKS_PER_SEC * 1000.f;
     p_app->m_avg_frame_time.addNumber(dt);
-    // SDL_Delay(10);
+    if(dt < 16.6666)
+    {
+        SDL_Delay(16.6666 - dt);
+    }
+
 #ifdef __EMSCRIPTEN__
     // emscripten_trace_record_frame_end();
 #endif

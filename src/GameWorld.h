@@ -18,8 +18,8 @@
 
 namespace map
 {
-    constexpr int MAP_SIZE_X = 2000;
-    constexpr int MAP_SIZE_Y = 2000;
+    constexpr int MAP_SIZE_X = 6900;
+    constexpr int MAP_SIZE_Y = 6900;
     constexpr int MAP_GRID_CELLS_X = 50;
     constexpr int MAP_GRID_CELLS_Y = MAP_GRID_CELLS_X;
 } //! namespace map
@@ -388,10 +388,19 @@ public:
         assert(m_cdt);
         return *m_cdt;
     }
+    TextureHolder& getTextrures() 
+    {
+        return m_textures;
+    }
     pathfinding::PathFinder &getPathFinder()
     {
         assert(m_pathfinder);
         return *m_pathfinder;
+    }
+
+    const Collisions::CollisionSystem& getCollider() const
+    {
+        return m_collision_system;
     }
 
 private:

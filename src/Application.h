@@ -200,6 +200,8 @@ private:
     void fireProjectile(ProjectileTarget target, utils::Vector2f from);
     void changeShield();
 
+    void selectInWorld(const utils::Vector2f& left_select, const utils::Vector2f& right_select);
+
 private:
     SurfaceManager m_surfaces;
     LayersHolder m_layers;
@@ -213,6 +215,8 @@ private:
 
     utils::Vector2f m_old_view_center;
     utils::Vector2f m_mouse_click_position;
+    utils::Vector2f m_selection_click_pos ;
+    bool m_is_selecting = false;
     bool m_wheel_is_held = false;
 
     bool m_is_moving_right = false;

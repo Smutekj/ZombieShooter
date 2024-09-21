@@ -74,9 +74,10 @@ namespace Collisions
         void insertObject(std::shared_ptr<GameObject> &p_object);
         void removeObject(GameObject &object);
         void update();
-        std::vector<int> findNearestObjectInds(ObjectType type, utils::Vector2f center, float radius);
-        std::vector<GameObject *> findNearestObjects(ObjectType type, utils::Vector2f center, float radius);
-        utils::Vector2f findClosestIntesection(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length);
+        std::vector<int> findNearestObjectInds(ObjectType type, utils::Vector2f center, float radius) const;
+        std::vector<GameObject *> findNearestObjects(ObjectType type, utils::Vector2f center, float radius) const;
+        std::vector<GameObject *> findNearestObjects(ObjectType type, AABB colllision_rect) const;
+        utils::Vector2f findClosestIntesection(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length) ;
 
     private:
         void narrowPhase(const std::vector<std::pair<int, int>> &colliding_pairs);

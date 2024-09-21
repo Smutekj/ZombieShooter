@@ -35,6 +35,7 @@ enum class ObjectType
     Player,
     Wall,
     Orbiter,
+    Event,
     VisualEffect,
     Count
 };

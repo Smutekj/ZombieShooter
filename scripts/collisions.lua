@@ -133,7 +133,6 @@ function EnemyEnemyCollision(obj1, obj2)
     -- obj1.vel.y = v1.y - v1_in_dr*dr.y;
     -- obj2.vel.x = v2.x - v2_in_dr*dr.x;
     -- obj2.vel.y = v2.y - v2_in_dr*dr.y;
-
 end
 
 function ResolveCollision(obj1, obj2)

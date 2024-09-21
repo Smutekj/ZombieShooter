@@ -138,7 +138,7 @@ namespace Collisions
         return c_data;
     }
 
-    std::vector<int> CollisionSystem::findNearestObjectInds(ObjectType type, utils::Vector2f center, float radius)
+    std::vector<int> CollisionSystem::findNearestObjectInds(ObjectType type, utils::Vector2f center, float radius) const
     {
         auto &tree = m_object_type2tree.at(type);
 
@@ -146,7 +146,7 @@ namespace Collisions
         return tree.findIntersectingLeaves(collision_rect);
     }
 
-    std::vector<GameObject *> CollisionSystem::findNearestObjects(ObjectType type, utils::Vector2f center, float radius)
+    std::vector<GameObject *> CollisionSystem::findNearestObjects(ObjectType type, utils::Vector2f center, float radius) const
     {
         auto &tree = m_object_type2tree.at(type);
 
@@ -160,6 +160,28 @@ namespace Collisions
             if (norm2(mvt) > 0.001f)
             {
                 objects.push_back(&obj);
+            }
+        }
+        return objects;
+    }
+    std::vector<GameObject *> CollisionSystem::findNearestObjects(ObjectType type, AABB collision_rect) const
+    {
+        auto &tree = m_object_type2tree.at(type);
+        Polygon p2(4);
+        p2.setPosition(collision_rect.getCenter());
+        p2.setScale(collision_rect.getSize()/2.f);
+        std::cout << collision_rect.r_min << "\n";
+        std::cout << collision_rect.r_max << "\n";
+        auto nearest_inds = tree.findIntersectingLeaves(collision_rect);
+        std::vector<GameObject *> objects;
+        for (auto ind : nearest_inds)
+        {
+            auto &obj = *m_objects.at(ind).lock();
+            auto collision_data = getCollisionData(obj.getCollisionShape(), p2);
+            if (collision_data.minimum_translation > 0) //! there is a collision
+            {
+                objects.push_back(&obj);
+
             }
         }
         return objects;

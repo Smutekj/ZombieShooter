@@ -36,7 +36,7 @@ UI::UI(Window &window, TextureHolder &textures,
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-    // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // IF using Docking Branch
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // IF using Docking Branch
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window.getHandle(), window.getContext());
@@ -357,9 +357,10 @@ void UI::draw(Window &window)
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    bool show_demo_window = true;
-    if (show_demo_window)
-        ImGui::ShowDemoWindow(&show_demo_window);
+
+    // bool show_demo_window = true;
+    // if (show_demo_window)
+    //     ImGui::ShowDemoWindow(&show_demo_window);
 
     std::vector<UIWindowType> active_windows;
     ImGui::Begin("Control Panel"); // Create a window called "Hello, world!" and append into it.

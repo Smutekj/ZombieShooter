@@ -6,6 +6,24 @@
 #include "AILuaComponent.h"
 #include "Shadows/VisibilityField.h"
 
+enum class Status
+{
+    Stunned,
+    Slowed,
+    Poisoned,
+    Fire,
+    Chilled,
+    Frozen,
+    Hasted
+};
+
+struct Statuses
+{
+
+    std::unordered_map<Status, float> m_status_timer; 
+
+};
+
 class PlayerEntity : public GameObject
 {
 
@@ -28,12 +46,29 @@ public:
 
     int m_health = 200;
     int m_max_health = 200;
+    float m_vision_radius = 50.f;
 
 private:
     float m_max_speed = 100.f;
 
     VisionField m_vision;
     VertexArray m_vision_verts;
+};
+class Event : public GameObject
+{
+
+public:
+    Event(TextureHolder &textures, std::string event_script_name);
+    virtual ~Event() override {}
+
+    virtual void update(float dt) override;
+    virtual void onCreation() override;
+    virtual void onDestruction() override;
+    virtual void draw(LayersHolder &layers) override;
+    virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+public:
+    std::string m_script_name;
 };
 
 class Wall : public GameObject
@@ -129,7 +164,7 @@ private:
 
 public:
     float max_vel = 40.f;
-    const float max_acc = 200.f;
+    const float max_acc = 50.f;
     const float max_impulse_vel = 40.f;
 
     float m_health = 5;
@@ -225,6 +260,7 @@ public:
                     if (target)
                     {
                         m_last_target_pos = target->getPosition();
+                        m_target = target;
                     }
                 }
                 else if constexpr (std::is_same_v<T, utils::Vector2f>)

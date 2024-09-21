@@ -30,7 +30,7 @@ public:
 
     void contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir);
 
-    void getDrawVertices(Shader &shader, VertexArray& verts,  Color color = {1,1,1,1}) const;
+    void getDrawVertices(Shader &shader, VertexArray& verts,  Color color = {1,1,1,1}, float max_radius = 30.f) const;
 
 private:
     cdt::Vector2f m_center;

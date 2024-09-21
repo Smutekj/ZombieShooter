@@ -6,15 +6,15 @@ local attack_range = 200
 local vision_range = 500
 
 local function randVec()
-    local rand_angle = math.random()*2.*math.pi;
+    local rand_angle = math.random() * 2. * math.pi;
     return Vec(math.cos(rand_angle), math.sin(rand_angle));
 end
 
 local function randVec(size)
-    local rand_angle = math.random()*2.*math.pi;
-    local result = Vec(0,0);
-    result.x = size*math.cos(rand_angle);
-    result.y = size*math.sin(rand_angle);
+    local rand_angle = math.random() * 2. * math.pi;
+    local result = Vec(0, 0);
+    result.x = size * math.cos(rand_angle);
+    result.y = size * math.sin(rand_angle);
     return result;
 end
 
@@ -96,7 +96,7 @@ local function onChase(enemy)
 end
 
 local function isInMap(r)
-    return r.x > 0 and r.y >0 and r.x < 2000 and r.y <2000;
+    return r.x > 0 and r.y > 0 and r.x < 2000 and r.y < 2000;
 end
 
 local function generateNewTargetPos(enemy)
@@ -111,24 +111,23 @@ local function onPatrol(enemy)
             return;
         end
     end
-    
+
     -- print("enemy pos: " .. enemy.target_pos.x, enemy.target_pos.y);
     if dist(enemy.target_pos.x, enemy.target_pos.y, enemy.x, enemy.y) < 400. then
         local n_attempts = 0;
-        local new_pos = enemy.target_pos ;
+        local new_pos = enemy.target_pos;
         repeat
-        local rand_dr = randVec(500.);
-        -- print(rand_dr.x, rand_dr.y)
-        new_pos = enemy.target_pos + rand_dr;
-        n_attempts = n_attempts + 1;
+            local rand_dr = randVec(500.);
+            -- print(rand_dr.x, rand_dr.y)
+            new_pos = enemy.target_pos + rand_dr;
+            n_attempts = n_attempts + 1;
         until n_attempts < 200 or isInMap(new_pos)
 
         if isInMap(new_pos) then
-           enemy.target_pos = new_pos; 
-           print(enemy.target_pos.y)
-           print("HI")
+            enemy.target_pos = new_pos;
+            print(enemy.target_pos.y)
+            print("HI")
         end
-        
     end
 
     player = getObject("Player");
@@ -170,4 +169,42 @@ function updateAI(enemy) --object is the c++ passed function
     -- enemy.target = getObject("Player");
     updateFSM(enemy);
     -- print(Time)
+end
+
+local function drawAgent(enemy, layers, radius, color, eye_color)
+    local thickness = radius / 10.;
+    local position = enemy.pos;
+    local prev_pos = Vec(position.x + radius, position.y);
+    -- for i = 0, 51 do
+    --     local x = position.x + radius * math.cos(i / 50. * 2. * math.pi);
+    --     local y = position.y + radius * math.sin(i / 50. * 2. * math.pi);
+    --     layers.drawLine(layers, "Unit", prev_pos, Vec(x, y), thickness, color);
+    --     prev_pos = Vec(x, y);
+    -- end
+    -- local left_eye_pos1 = position + Vec(-radius * 0.2, radius * 0.4);
+    -- local left_eye_pos2 = position + Vec(-radius * 0.6, radius * 0.5);
+    -- local right_eye_pos1 = position + Vec(radius * 0.2, radius * 0.4);
+    -- local right_eye_pos2 = position + Vec(radius * 0.6, radius * 0.5);
+    -- layers.drawLine(layers, "Fire", left_eye_pos1, left_eye_pos2, thickness / 2., eye_color);
+    -- layers.drawLine(layers, "Fire", right_eye_pos1, right_eye_pos2, thickness / 2., eye_color);
+
+    local texture = getTexture("coin");
+    local sprite = Sprite();
+    sprite.setTexture(sprite, 0, texture);
+    sprite.pos = Vec(enemy.x, enemy.y);
+    sprite.scale = Vec(15.,15.);
+    -- if norm(enemy.vel) > 0 then
+    --     sprite.angle = math.deg(math.atan(enemy.vel.y, enemy.vel.x));
+    -- else
+        sprite.angle = math.rad(enemy.angle);
+    -- end
+
+    layers.drawSprite(layers, "Wall", sprite, "basicagent");
+    layers.drawLine(layers, "Unit", enemy.pos, enemy.pos + enemy.vel, thickness / 2., eye_color);
+end
+
+function Draw(enemy, layers) --object is the c++ passed function
+    local c = Color(1, 0, 0, 1);
+    local eye_color = Color(10, 0, 0, 1);
+    drawAgent(enemy, layers, 10., c, eye_color);
 end

@@ -252,7 +252,7 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
     }
 }
 
-void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color color) const
+void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color color, float max_radius) const
 {
     auto from = m_center;
     auto angle_dist_cond = [from](VisionCone &r1, VisionCone &r2)
@@ -269,7 +269,6 @@ void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color c
 
     float max_alpha = 1.0;
     float min_alpha = 0.0;
-    float max_radius = 20.f;
     auto calcAlpha = [max_radius, max_alpha, min_alpha](const float radius) -> float
     {
         if (radius > max_radius)

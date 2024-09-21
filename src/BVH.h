@@ -52,7 +52,7 @@ public:
     }
 
     std::vector<std::pair<int, int>> findClosePairsWith(BoundingVolumeTree &tree);
-    std::vector<int> findIntersectingLeaves(AABB rect);
+    std::vector<int> findIntersectingLeaves(AABB rect) const;
 
     void clear();
 

@@ -29,9 +29,6 @@ extern "C"
 #define M_PIf std::numbers::pi_v<float>
 #endif
 
-
-
-
 namespace cdt
 {
     template class Triangulation<utils::Vector2f>;
@@ -51,10 +48,11 @@ static float dir2angle(utils::Vector2f dir)
     return 180.f * std::atan2(dir.y, dir.x) / M_PIf;
 }
 
-void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color)
+void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color, Color eye_color = {1, 0, 0, 1})
 {
     radius /= std::sqrt(2.f);
     auto &canvas = layers.getCanvas("Unit");
+    auto &eye_canvas = layers.getCanvas("Fire");
 
     float thickness = radius / 10.f;
 
@@ -70,8 +68,8 @@ void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color co
     utils::Vector2f left_eye_pos2 = pos + utils::Vector2f{-radius * 0.6, radius * 0.5};
     utils::Vector2f right_eye_pos1 = pos + utils::Vector2f{+radius * 0.2, radius * 0.4};
     utils::Vector2f right_eye_pos2 = pos + utils::Vector2f{+radius * 0.6, radius * 0.5};
-    canvas.drawLineBatched(left_eye_pos1, left_eye_pos2, thickness / 2.f, color, GL_DYNAMIC_DRAW);
-    canvas.drawLineBatched(right_eye_pos1, right_eye_pos2, thickness / 2.f, color, GL_DYNAMIC_DRAW);
+    eye_canvas.drawLineBatched(left_eye_pos1, left_eye_pos2, thickness / 2.f, eye_color, GL_DYNAMIC_DRAW);
+    eye_canvas.drawLineBatched(right_eye_pos1, right_eye_pos2, thickness / 2.f, eye_color, GL_DYNAMIC_DRAW);
     // canvas.drawCricleBatched(, 1.0, color, GL_DYNAMIC_DRAW);
 }
 
@@ -102,7 +100,6 @@ void PlayerEntity::update(float dt)
     truncate(m_vel, m_max_speed);
 }
 
-
 void PlayerEntity::onCreation()
 {
 }
@@ -117,7 +114,7 @@ void PlayerEntity::draw(LayersHolder &layers)
     shader.use();
     shader.setUniform2("u_posx", m_pos.x);
     shader.setUniform2("u_posy", m_pos.y);
-    m_vision.getDrawVertices(shader, m_vision_verts);
+    m_vision.getDrawVertices(shader, m_vision_verts, {1, 1, 1, 1}, m_vision_radius);
     for (int vert_ind = 0; vert_ind < m_vision_verts.size(); ++vert_ind)
     {
         const auto &pos = m_vision_verts[vert_ind].pos;
@@ -181,6 +178,118 @@ void PlayerEntity::onCollisionWith(GameObject &obj, CollisionData &c_data)
         catch (std::exception &e)
         {
             std::cout << "ERROR IN EnemyWall" << e.what() << "\n";
+        }
+        break;
+    }
+    }
+};
+
+Event::Event(TextureHolder &textures, std::string event_script_name)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Event),
+      m_script_name(event_script_name)
+{
+    m_collision_shape = std::make_unique<Polygon>(8);
+    setSize({20.f, 20.f});
+
+    if (!LuaWrapper::loadScript(event_script_name))
+    {
+        return;
+    }
+}
+
+void Event::update(float dt)
+{
+    if (!LuaWrapper::loadScript(m_script_name))
+    {
+        return;
+    }
+
+    try
+    {
+        auto update = luabridge::getGlobal(LuaWrapper::getSingleton()->m_lua_state, "EventUpdate");
+        update(this);
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN EventUpdate: " << e.what() << "\n";
+    }
+}
+
+void Event::onCreation()
+{
+}
+void Event::onDestruction()
+{
+}
+void Event::draw(LayersHolder &layers)
+{
+}
+
+void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
+{
+
+    if (!LuaWrapper::loadScript(m_script_name))
+    {
+        return;
+    }
+    auto lua = LuaWrapper::getSingleton();
+
+    switch (obj.getType())
+    {
+    case ObjectType::Bullet:
+    {
+        auto bullet = static_cast<Projectile *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventBulletCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EventBulletCollision: " << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Player:
+    {
+        auto player = static_cast<PlayerEntity *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventPlayerCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EventPlayerCollision" << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Enemy:
+    {
+        auto enemy = static_cast<Enemy *>(&obj);
+        try
+        {
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventEnemyCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EventEnemyCollision" << e.what() << "\n";
+        }
+        break;
+    }
+    case ObjectType::Wall:
+    {
+        auto wall = static_cast<Wall *>(&obj);
+        try
+        {
+
+            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventWallCollision");
+            collider(this, &obj);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN EventWallCollision" << e.what() << "\n";
         }
         break;
     }
@@ -476,8 +585,6 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
 
 Enemy::~Enemy() {}
 
-
-
 void Enemy::doScript()
 {
     auto lua = LuaWrapper::getSingleton();
@@ -539,6 +646,10 @@ void Enemy::update(float dt)
 
     truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
+    if(norm2(m_vel) > 0.000001)
+    {
+        m_angle = dir2angle(m_vel);
+    }
 
     truncate(m_vel, max_vel);
     m_pos += (m_impulse)*dt;
@@ -628,7 +739,32 @@ void Enemy::onDestruction()
 
 void Enemy::draw(LayersHolder &layers)
 {
-    drawAgent(m_pos, m_size.x, layers, m_color);
+    try
+    {
+        auto lua = LuaWrapper::getSingleton();
+        auto drawer = luabridge::getGlobal(lua->m_lua_state, "Draw");
+        if (drawer.isFunction())
+        {
+            drawer(this, layers);
+        }
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN EnemyDraw: " << e.what() << "\n";
+    }
+
+    // if (m_state == AIState::Patroling)
+    // {
+        // drawAgent(m_pos, m_size.x, layers, {0, 1, 0, 1}, {0, 2, 0, 1});
+    // }
+    // else if (m_state == AIState::Chasing)
+    // {
+    //     drawAgent(m_pos, m_size.x, layers, {1, 1, 0, 1}, {2, 4, 0, 1});
+    // }
+    // else if (m_state == AIState::Attacking)
+    // {
+    //     drawAgent(m_pos, m_size.x, layers, {1, 0, 0, 1}, {20, 0, 0, 1});
+    // }
     // layers.getCanvas("Unit").drawLineBatched(m_pos, m_target_pos, 0.5, {0, 1, 0, 1});
 }
 
