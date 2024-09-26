@@ -187,13 +187,14 @@ private:
     void onWheelMove(SDL_MouseWheelEvent event);
     
     void moveView(utils::Vector2f dr, Renderer &target);
-    bool isKeyPressed(SDL_Scancode key)
+    static bool isKeyPressed(SDL_Scancode key)
     {
         auto *keystate = SDL_GetKeyboardState(NULL);
         return keystate[key];
     }
 
-    void doBloom(Texture &source, Renderer &target);
+    void initializeLayers();
+
 
     friend void gameLoop(void *);
 

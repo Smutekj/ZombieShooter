@@ -2,13 +2,12 @@
 #include "GameWorld.h"
 #include "AILuaComponent.h"
 #include "Entities.h"
+#include "Enviroment.h"
 #include "Particles.h"
 
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
-#include <LuaBridge/LuaBridge.h>
 
 //! Code for making the singleton work (Likely stolen)
 LuaWrapper *LuaWrapper::s_instance = nullptr;
@@ -23,7 +22,60 @@ LuaWrapper *LuaWrapper::getSingleton()
     return s_instance;
 }
 
-bool LuaWrapper::loadScript(const std::string &script_name)
+namespace luabridge
+{
+    template <class... Args>
+    struct ConstOverload
+    {
+        template <class R, class T>
+        constexpr auto operator()(R (T::*ptr)(Args...) const) const noexcept -> decltype(ptr)
+        {
+            return ptr;
+        }
+
+        template <class R, class T>
+        static constexpr auto with(R (T::*ptr)(Args...) const) noexcept -> decltype(ptr)
+        {
+            return ptr;
+        }
+    };
+    template <class... Args>
+    struct NonConstOverload
+    {
+        template <class R, class T>
+        constexpr auto operator()(R (T::*ptr)(Args...)) const noexcept -> decltype(ptr)
+        {
+            return ptr;
+        }
+
+        template <class R, class T>
+        static constexpr auto with(R (T::*ptr)(Args...)) noexcept -> decltype(ptr)
+        {
+            return ptr;
+        }
+    };
+
+    template <class... Args>
+    [[maybe_unused]] constexpr ConstOverload<Args...> constOverload = {};
+    template <class... Args>
+    [[maybe_unused]] constexpr NonConstOverload<Args...> nonConstOverload = {};
+}
+
+template <class T>
+void registerVector(luabridge::Namespace luaNamespace, const char *className)
+{
+    using VecT = std::vector<T>;
+
+    luaNamespace
+        .beginClass<VecT>(className)
+        // .addConstructor([](void* ptr) { return new(ptr) U(); })
+        .addFunction("at", luabridge::nonConstOverload<std::size_t>(&VecT::at))
+        .addFunction("size", &VecT::size)
+        .endClass();
+    // .endNamespace();
+}
+
+LuaScriptStatus LuaWrapper::loadScript(const std::string &script_name)
 {
 
     std::filesystem::path path = "../scripts/" + script_name;
@@ -38,21 +90,28 @@ bool LuaWrapper::loadScript(const std::string &script_name)
 
     if (m_script2last_change.count(script_name) > 0 && m_script2last_change.at(script_name) == last_change)
     {
-        return true; //! there was no change since last time in the script so we return
+        return LuaScriptStatus::Ok; //! there was no change since last time in the script so we return
     }
 
     m_script2last_change[script_name] = last_change;
 
     //! load script
-    auto script_load_status = luaL_dofile(lua->m_lua_state, path.c_str());
-
-    if (script_load_status)
+    int script_load_status = 0;
+    try
     {
-        spdlog::get("lua_logger")->error("Script with name " + script_name + " not done");
-        return false;
+        script_load_status = luaL_dofile(lua->m_lua_state, path.c_str());
+        if (script_load_status)
+        {
+            spdlog::get("lua_logger")->error("Script with name " + script_name + " not done");
+            return LuaScriptStatus::Broken;
+        }
+    }
+    catch (std::exception &e)
+    {
+        return LuaScriptStatus::Broken;
     }
 
-    return true;
+    return LuaScriptStatus::Changed;
 }
 
 LuaWrapper::LuaWrapper()
@@ -150,6 +209,26 @@ static Enemy *createEnemy(lua_State *state)
     auto new_obj = GameWorld::getWorld().addObject("Enemy", object_name);
 
     return static_cast<Enemy *>(new_obj.get());
+}
+
+static EnviromentEffect *createEffect(lua_State *state)
+{
+    int num_args = lua_gettop(state);
+
+    if (num_args != 2)
+    {
+        std::string msg = " OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
+        spdlog::get("lua_logger")->error(msg);
+        lua_pushinteger(state, LUA_ERRRUN);
+        lua_error(state);
+        return nullptr;
+    }
+    std::string object_name = lua_tostring(state, 1);
+    std::string script_name = lua_tostring(state, 2);
+
+    auto new_obj = GameWorld::getWorld().addObject<EnviromentEffect>(object_name, script_name);
+    GameWorld::getWorld().update(0);
+    return static_cast<EnviromentEffect *>(new_obj.get());
 }
 
 static Event *createEvent(lua_State *state)
@@ -347,7 +426,7 @@ int changeParentOf(lua_State *state)
     auto &world = GameWorld::getWorld();
     auto parent_id = world.getIdOf(parent_name);
     auto my_id = world.getIdOf(object_name);
-    if (my_id == -1 || parent_id == -1)
+    if (my_id != -1 && parent_id != -1)
     {
         world.m_scene.changeParentOf(my_id, parent_id);
     }
@@ -383,6 +462,19 @@ int setPosition(lua_State *state)
     lua_pushinteger(state, LUA_ERRRUN);
     lua_error(state);
     return 1;
+}
+
+void setPosition2(const std::string &entity_name, float x, float y)
+{
+    auto &world = GameWorld::getWorld();
+
+    auto entity_id = world.getIdOf(entity_name);
+    if (entity_id != -1)
+    {
+        auto p_entity = world.get(entity_id);
+        assert(p_entity);
+        p_entity->setPosition({x, y});
+    }
 }
 static int setTarget(lua_State *state)
 {
@@ -461,6 +553,11 @@ std::string getName(lua_State *state)
     auto name = GameWorld::getWorld().getName(id);
     return name;
 };
+int getId(const std::string &name)
+{
+    return GameWorld::getWorld().getIdOf(name);
+    ;
+};
 
 static Texture *getTexture(lua_State *lua_state)
 {
@@ -485,10 +582,8 @@ void LuaWrapper::initializeLuaFunctions()
 {
     lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
     lua_register(m_lua_state, "addEffect", addEffect);
-    lua_register(m_lua_state, "setPosition", setPosition);
     lua_register(m_lua_state, "setTarget", setTarget);
     lua_register(m_lua_state, "setVelocity", setVelocity);
-    lua_register(m_lua_state, "changeParentOf", changeParentOf);
 
     using namespace utils;
     luabridge::getGlobalNamespace(m_lua_state)
@@ -501,15 +596,18 @@ void LuaWrapper::initializeLuaFunctions()
 
     luabridge::getGlobalNamespace(m_lua_state)
         .addFunction("createObject", &createObject2)
+        .addFunction("changeParentOf", changeParentOf)
         .addFunction("createProjectile", &createProjectile)
         .addFunction("createEnemy", &createEnemy)
+        .addFunction("createEffect", &createEffect)
         .addFunction("createEvent", &createEvent)
         .addFunction("removeObject", &removeObject)
         .addFunction("removeObjects", &removeObjects)
-        .addFunction("setPosition", &setPosition)
+        .addFunction("setPosition", &setPosition2)
         .addFunction("setTarget", &setTarget)
         .addFunction("setVelocity", &setVelocity)
         .addFunction("getName", &getName)
+        .addFunction("getIdOf", &getId)
         .addFunction("getObject", &getObject)
         .addFunction("getTexture", &getTexture);
 
@@ -563,8 +661,7 @@ void LuaWrapper::initializeLuaFunctions()
         .addConstructor<void (*)(int)>()
         .addProperty("spawn_pos", &Particles::m_spawn_pos)
         .addProperty("init_color", &Particles::m_init_color)
-        .addProperty("final_color", &Particles::m_final_color)
-        .addProperty("final_color", &Particles::m_final_color)
+        .addProperty("updater", &Particles::m_updater_full)
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
@@ -584,7 +681,6 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("state", &Enemy::getState, &Enemy::setState)
         .addProperty("script", &Enemy::getScript, &Enemy::setScript)
         .addProperty("health", &Enemy::m_health)
-        .addProperty("type", &Enemy::m_health)
         .endClass()
         .deriveClass<Projectile, GameObject>("Projectile")
         .addProperty("max_vel", &Projectile::getMaxVel, &Projectile::setMaxVel)
@@ -601,7 +697,12 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("script_name", &Event::m_script_name)
         .endClass()
         .deriveClass<Wall, GameObject>("Wall")
+        .endClass()
+        .deriveClass<EnviromentEffect, GameObject>("Effect")
+        .addFunction("addParticles", &EnviromentEffect::addParticles)
         .endClass();
+
+    registerVector<Particle>(luabridge::getGlobalNamespace(m_lua_state), "ParticleVector");
 }
 
 //! \brief runs the command if it is registered
@@ -639,11 +740,13 @@ bool LuaWrapper::doFile(const std::string &filename)
         return false;
     }
     auto call_status = lua_pcall(m_lua_state, 0, LUA_MULTRET, 0);
-    assert(lua_isinteger(m_lua_state, -1));
-    auto error_status = lua_tointeger(m_lua_state, -1);
-    if (error_status != LUA_OK)
+    if (lua_isinteger(m_lua_state, -1))
     {
-        return false;
+        auto error_status = lua_tointeger(m_lua_state, -1);
+        if (error_status != LUA_OK)
+        {
+            return false;
+        }
     }
     return true;
 }

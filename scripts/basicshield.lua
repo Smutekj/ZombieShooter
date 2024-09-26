@@ -25,13 +25,19 @@ local function angle(dir)
 end
 
 function Updater(particle)
-    -- particle.vel.x = (particle.vel.x)*0.85;
-    -- particle.vel.y = (particle.vel.y)*0.85;
+    particle.vel.x = (particle.vel.x)*0.85;
+    particle.vel.y = (particle.vel.y)*0.85;
     particle.pos = particle.pos + particle.vel;
     return particle;
 end
 
 
+
+function math.norm(v)
+    return math.sqrt(v.x*v.x + v.y*v.y);
+end
+
+GameTimeStep = 0.1; -- dt used in world.update(dt);
 
 function Spawner(spawn_pos, spawn_vel)
 
@@ -45,10 +51,18 @@ function Spawner(spawn_pos, spawn_vel)
     p.pos.x = spawn_pos.x + dr.x;
     p.pos.y = spawn_pos.y + dr.y;
     local norm = math.sqrt(dr.x*dr.x + dr.y*dr.y);
-    p.vel.x = dr.x/norm*speed + spawn_vel.x/600.;
-    p.vel.y = dr.y/norm*speed + spawn_vel.y/600.;
-    p.angle = angle(dr)
-    p.life_time = 0.5;
+    local norm_spawn_vel = math.norm(spawn_vel);
+    p.vel.x = dr.x/norm*speed + spawn_vel.x*GameTimeStep;
+    p.vel.y = dr.y/norm*speed + spawn_vel.y*GameTimeStep;
+
+    p.angle = angle(dr);
+    if (norm_spawn_vel > 0) then    
+        p.life_time = math.min(2./norm_spawn_vel, 0.5);
+        print(p.life_time);
+    else
+        p.life_time = 0.5;
+    end
+    print(p.life_time);
     p.scale.x = 10.;
     p.scale.y = 0.5;
     return p;

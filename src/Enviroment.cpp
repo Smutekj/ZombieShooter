@@ -3,13 +3,44 @@
 #include "MapGrid.h"
 
 #include "GameWorld.h"
+#include "LuaWrapper.h"
 #include "Utils/RandomTools.h"
+
+#include <LuaBridge/LuaBridge.h>
+#include <LuaBridge/UnorderedMap.h>
+// #include <LuaBridge/Vector.h>
 
 #include <Font.h>
 
 EnviromentEffect::EnviromentEffect(TextureHolder &textures)
     : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
 {
+}
+EnviromentEffect::EnviromentEffect(TextureHolder &textures, const std::string &script_name)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect), m_script_name(script_name)
+{
+    loadFromScript(script_name);
+}
+
+static void setEmitter(Particles &particles, luabridge::LuaRef spawner, utils::Vector2f &vel)
+{
+    if (spawner.isFunction())
+    {
+        particles.setEmitter(
+            [&vel, spawner](auto pos)
+            {
+                Particle p;
+                try
+                {
+                    p = spawner(pos, vel);
+                }
+                catch (std::exception &e)
+                {
+                    std::cout << "ERROR IN Spawner" << e.what() << " !";
+                }
+                return p;
+            });
+    }
 }
 
 FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
@@ -162,4 +193,153 @@ void FloatingText::update(float dt)
     }
     m_vel.y = 0.5f;
     m_text.setPosition(m_pos);
+}
+
+void EnviromentEffect::addParticles(const std::string &name, const std::string &layer, int max_particle_count)
+{
+    if (m_particles_holder.count(name) != 0)
+    {
+        m_particles_holder.insert({name, {layer, Particles{max_particle_count}}});
+    }
+}
+
+Particles *EnviromentEffect::getParticlesP(const std::string &name)
+{
+
+    if (m_particles_holder.count(name) == 0)
+    {
+        return nullptr;
+    }
+    return &(m_particles_holder.find(name)->second.particles);
+}
+
+void EnviromentEffect::doScript(const std::string &script_name)
+{
+    auto lua = LuaWrapper::getSingleton();
+
+    if (LuaWrapper::loadScript(script_name) != LuaScriptStatus::Ok)
+    {
+        return;
+    }
+}
+
+void EnviromentEffect::update(float dt)
+{
+    loadFromScript(m_script_name);
+
+    for (auto &[particles_name, draw_data] : m_particles_holder)
+    {
+        draw_data.particles.setSpawnPos(m_pos);
+        draw_data.particles.update(dt);
+    }
+    // if ()
+    {
+        m_transform.setPosition(0.f, 0.f);
+        // if (m_time > m_lifetime)
+        // {
+        //     kill();
+        // }
+        
+    }
+}
+void EnviromentEffect::draw(LayersHolder &layers)
+{
+    for (auto &[particles_name, draw_data] : m_particles_holder)
+    {
+        auto &layer_name = draw_data.layer_name;
+        auto &canvas = layers.getCanvas(layer_name);
+        draw_data.particles.draw(canvas);
+    }
+
+    //! draw script
+    if (m_drawer)
+    {
+        m_drawer(layers);
+    }
+}
+
+void EnviromentEffect::loadFromScript(const std::string &script_name)
+{
+    auto lua = LuaWrapper::getSingleton();
+
+    auto script_status = LuaWrapper::loadScript(script_name);
+    if (script_status == LuaScriptStatus::Ok)
+    {
+        return; //! do nothing since nothing changed
+    }
+    else if (script_status == LuaScriptStatus::Broken)
+    {
+        return; //! do nothing since the file is broken
+    }
+
+    auto data_table_penis = getTable(lua->m_lua_state, "Effect");
+    auto data_table = data_table_penis.cast<std::unordered_map<std::string, luabridge::LuaRef>>();
+
+    for (auto &[particles_name, p] : data_table)
+    {
+        auto particles_table = data_table.at(particles_name);
+        if (particles_table.isTable())
+        {
+            auto particle_data = particles_table.cast<std::unordered_map<std::string, luabridge::LuaRef>>();
+            auto layer_name = particle_data.at("layer");
+            auto shader_id = particle_data.at("shader");
+            auto updater = particle_data.at("updater");
+            auto emitter = particle_data.at("spawner");
+            if (!(shader_id.isString() && layer_name.isString() && updater.isFunction() && emitter.isFunction()))
+            {
+                std::cout << "Types are wrong ParticleTable in script: " << script_name << " in " << particles_name << "\n";
+                continue;
+            }
+
+            m_particles_holder.insert({particles_name, {layer_name, Particles{200}}});
+            auto &particles = m_particles_holder.at(particles_name).particles;
+            particles.setShader(shader_id);
+            particles.setUpdaterFull([this, updater](std::vector<Particle> &particles, int particle_count, float dt)
+                                     {
+                    try
+                    {
+                        updater(&particles, particle_count, dt);
+                    }
+                    catch (std::exception &e)
+                    {
+                        std::cout << "ERROR IN UpdaterFull: " << e.what() << " !";
+                    } });
+            particles.setEmitter([this, emitter](utils::Vector2f spawn_pos)
+                                 {
+                    Particle p;
+                    try
+                    {
+                        auto &world = GameWorld::getWorld();
+                        auto parent_id = world.m_scene.getNode(getId()).parent;
+                        auto owner = world.get(parent_id);
+                        auto vel = m_vel;
+                        if (owner)
+                        {
+                            vel = owner->m_vel;
+                        }
+                        p = emitter(spawn_pos, vel);
+                    }
+                    catch (std::exception &e)
+                    {
+                        std::cout << "ERROR IN Spawner: " << e.what() << " !";
+                    }
+                    return p; });
+        }
+    }
+    auto drawer_lua = data_table.at("Drawer");
+    if (drawer_lua.isFunction())
+    {
+
+        m_drawer = [this, drawer_lua](LayersHolder &layers)
+        {
+            try
+            {
+                drawer_lua(this, layers);
+            }
+            catch (std::exception &e)
+            {
+                std::cout << "ERROR IN Drawer: " << e.what() << "\n";
+            }
+        };
+    }
 }

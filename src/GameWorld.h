@@ -18,8 +18,8 @@
 
 namespace map
 {
-    constexpr int MAP_SIZE_X = 6900;
-    constexpr int MAP_SIZE_Y = 6900;
+    constexpr int MAP_SIZE_X = 1000;
+    constexpr int MAP_SIZE_Y = 1000;
     constexpr int MAP_GRID_CELLS_X = 50;
     constexpr int MAP_GRID_CELLS_Y = MAP_GRID_CELLS_X;
 } //! namespace map
@@ -464,6 +464,7 @@ std::shared_ptr<EntityType> GameWorld::addObject(const std::string name, Args...
     new_obj.name = name;
     new_obj.parent = -1;
     m_to_add.push(new_obj);
+    addQueuedEntities();
     return ptr_obj;
 }
 

@@ -130,7 +130,7 @@ void PlayerEntity::draw(LayersHolder &layers)
 void PlayerEntity::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
 
-    if (!LuaWrapper::loadScript("collisions"))
+    if (LuaWrapper::loadScript("collisions") != LuaScriptStatus::Ok)
     {
         return;
     }
@@ -191,7 +191,7 @@ Event::Event(TextureHolder &textures, std::string event_script_name)
     m_collision_shape = std::make_unique<Polygon>(8);
     setSize({20.f, 20.f});
 
-    if (!LuaWrapper::loadScript(event_script_name))
+    if (LuaWrapper::loadScript(event_script_name) != LuaScriptStatus::Ok)
     {
         return;
     }
@@ -199,7 +199,7 @@ Event::Event(TextureHolder &textures, std::string event_script_name)
 
 void Event::update(float dt)
 {
-    if (!LuaWrapper::loadScript(m_script_name))
+    if (LuaWrapper::loadScript(m_script_name) != LuaScriptStatus::Ok)
     {
         return;
     }
@@ -228,7 +228,7 @@ void Event::draw(LayersHolder &layers)
 void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
 
-    if (!LuaWrapper::loadScript(m_script_name))
+    if (LuaWrapper::loadScript(m_script_name) != LuaScriptStatus::Ok)
     {
         return;
     }
@@ -376,35 +376,6 @@ void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
 //     }
 
 // }
-
-Color getColor(lua_State *state, const std::string &var_name)
-{
-    try
-    {
-        auto init_color = luabridge::getGlobal(state, var_name.c_str());
-        return init_color;
-    }
-    catch (std::exception &e)
-    {
-        std::cout << "ERROR IN getColor" << e.what() << "\n";
-    }
-    return Color();
-}
-template <class VarType>
-VarType getVariable(lua_State *state, const std::string &var_name)
-{
-    try
-    {
-        auto var = luabridge::getGlobal(state, var_name.c_str());
-        return var;
-    }
-    catch (std::exception &e)
-    {
-        std::cout << "ERROR IN getVariable" << e.what() << "\n";
-    }
-    static_assert(std::is_default_constructible_v<VarType>, "Add default constructor!");
-    return VarType();
-}
 
 void Projectile::readDataFromScript()
 {
@@ -581,6 +552,7 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
     m_collision_shape = std::make_unique<Polygon>(4);
     setSize({20.f, 20.f});
     // m_target_pos = player->getPosition();
+    m_pathfinding_cd = (rand() % 200) + 100;
 }
 
 Enemy::~Enemy() {}
@@ -589,11 +561,11 @@ void Enemy::doScript()
 {
     auto lua = LuaWrapper::getSingleton();
 
-    if (!LuaWrapper::loadScript("collisions.lua"))
+    if (LuaWrapper::loadScript("collisions.lua") != LuaScriptStatus::Ok)
     {
         return;
     }
-    if (!LuaWrapper::loadScript("basicai.lua"))
+    if (LuaWrapper::loadScript("basicai.lua") != LuaScriptStatus::Ok)
     {
         return;
     }
@@ -646,7 +618,7 @@ void Enemy::update(float dt)
 
     truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
-    if(norm2(m_vel) > 0.000001)
+    if (norm2(m_vel) > 0.000001)
     {
         m_angle = dir2angle(m_vel);
     }
@@ -732,6 +704,23 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
 
 void Enemy::onCreation()
 {
+    if (LuaWrapper::loadScript("entitydied.lua") == LuaScriptStatus::Broken)
+    {
+        return;
+    }
+    auto lua = LuaWrapper::getSingleton();
+    auto on_creation = luabridge::getGlobal(lua->m_lua_state, "OnEnemyCreation");
+    if (on_creation.isFunction())
+    {
+        try
+        {
+            on_creation(this, std::string{"enemy1"});
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERORR IN OnEnemyCreation: " << e.what() << " !\n";
+        }
+    }
 }
 void Enemy::onDestruction()
 {
@@ -755,7 +744,7 @@ void Enemy::draw(LayersHolder &layers)
 
     // if (m_state == AIState::Patroling)
     // {
-        // drawAgent(m_pos, m_size.x, layers, {0, 1, 0, 1}, {0, 2, 0, 1});
+    // drawAgent(m_pos, m_size.x, layers, {0, 1, 0, 1}, {0, 2, 0, 1});
     // }
     // else if (m_state == AIState::Chasing)
     // {

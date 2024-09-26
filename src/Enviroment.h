@@ -16,13 +16,21 @@ class EnviromentEffect : public GameObject
 public:
     EnviromentEffect() = default;
     EnviromentEffect(TextureHolder &textures);
+    EnviromentEffect(TextureHolder &textures, const std::string& script_name);
     virtual ~EnviromentEffect() override {}
 
-    virtual void update(float dt) = 0;
-    virtual void onCreation() = 0;
-    virtual void onDestruction() = 0;
-    virtual void draw(LayersHolder &layers) = 0;
+    virtual void update(float dt);
+    virtual void onCreation() {};
+    virtual void onDestruction() {};
+    virtual void draw(LayersHolder &layers);
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) final {};
+
+    void addParticles(const std::string& name, const std::string& layer_name = "Unit", int max_particle_count = 200);
+
+    Particles* getParticlesP(const std::string& name) ;
+
+    void doScript(const std::string &script_name);
+    void loadFromScript(const std::string &script_name);
 
     void setColor(const std::string &color_name, const Color &color)
     {
@@ -38,9 +46,16 @@ public:
         return false;
     }
 
-protected:
-    std::unordered_map<std::string, Color> m_colors;
+    struct ParticlesDrawData{
+        std::string layer_name = "Unit";
+        Particles particles;
+    };
 
+protected:
+    std::string m_script_name = "testeffect.lua";
+    std::unordered_map<std::string, Color> m_colors;
+    std::unordered_map<std::string, ParticlesDrawData> m_particles_holder;
+    std::function<void(LayersHolder&)> m_drawer;
 private:
 };
 
@@ -80,6 +95,7 @@ public:
 
 public:
     float m_lifetime = 5.f;
+
 private:
     Text m_text;
 

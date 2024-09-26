@@ -11,7 +11,6 @@ function dump(o)
    end
 end
 
-
 function OnEntityDead(entity)
    -- for id, quest in pairs(Quests) do
       
@@ -21,4 +20,12 @@ function OnEntityDead(entity)
    --          print("quest complete!");
    --    end
    -- end
+end
+
+function OnEnemyCreation(enemy, enemy_type)
+
+   Entity2Abilities[enemy.id] = {};
+   GlobalCooldowns[enemy.id] = 1.;
+
+   EnemyData[enemy_type].initialize(enemy);
 end

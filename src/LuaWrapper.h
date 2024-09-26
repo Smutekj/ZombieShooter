@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <unordered_map>
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -18,6 +17,9 @@ extern "C"
 
 #include <spdlog/sinks/ringbuffer_sink.h>
 
+#include <LuaBridge/LuaBridge.h>
+
+
 class GameWorld;
 namespace spdlog
 {
@@ -28,11 +30,18 @@ namespace spdlog
     // }
 }
 
+enum class LuaScriptStatus
+{
+    Ok,
+    Changed,
+    Broken
+};
+
 class LuaWrapper
 {
 public:
     static LuaWrapper *getSingleton();
-    static bool loadScript(const std::string& script_name);
+    static LuaScriptStatus loadScript(const std::string &script_name);
     bool doString(const std::string &command);
     bool doFile(const std::string &filename);
     // bool runScript(const std::string& script_name, const std::string& function_name);
@@ -50,9 +59,8 @@ private:
     std::shared_ptr<spdlog::logger> m_logger;
     std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ringbuffer_sink = nullptr;
 
-    static std::unordered_map<std::string, std::filesystem::file_time_type> m_script2last_change; 
+    static std::unordered_map<std::string, std::filesystem::file_time_type> m_script2last_change;
 };
-
 
 void reportErrors(lua_State *luaState, int status);
 
@@ -88,3 +96,49 @@ void reportErrors(lua_State *luaState, int status);
 //     }
 //     return true;
 // }
+
+template <class VarType>
+inline VarType getVariable(lua_State *state, const std::string &var_name)
+{
+    try
+    {
+        auto var = luabridge::getGlobal(state, var_name.c_str());
+        return var;
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN getVariable" << e.what() << "\n";
+    }
+    static_assert(std::is_default_constructible_v<VarType>, "Add default constructor!");
+    return VarType();
+}
+template <class VarType>
+inline VarType getVariableFromTable(lua_State *state, const std::string& table_name, const std::string &var_name)
+{
+    try
+    {
+        auto table_lua = luabridge::getGlobal(state, table_name.c_str());
+        auto table = table_lua.cast<std::unordered_map<std::string, VarType>>();
+        return table.at(var_name);
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN getVariableFromTable" << e.what() << "\n";
+    }
+    static_assert(std::is_default_constructible_v<VarType>, "Add default constructor!");
+    return VarType();
+}
+
+inline luabridge::LuaRef getTable(lua_State *state, const std::string& table_name)
+{
+    try
+    {
+        auto table_lua = luabridge::getGlobal(state, table_name.c_str());
+        return table_lua;
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN getTable" << e.what() << "\n";
+    }
+    return luabridge::LuaRef{state};
+}

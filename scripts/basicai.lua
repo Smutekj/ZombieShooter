@@ -40,29 +40,20 @@ local function onAttack(enemy)
         return
     end
     local target = enemy.target;
-    if Timers[enemy.id] == nil then
-        Timers[enemy.id] = 0;
+    -- if Timers[enemy.id] == nil then
+    --     Timers[enemy.id] = 0;
+    -- end
+    -- local timer = Timers[enemy.id];
+    -- timer = timer + 1;
+    -- if timer > 100 then
+    --     timer = 0;
+    if inRange(enemy, target, attack_range) then
+        Entity2Abilities[enemy.id][FireBoltAbility.spell_id].onUse(enemy, target);
+    else
+        enemy.state = CHASING;
     end
-    local timer = Timers[enemy.id];
-    timer = timer + 1;
-    if timer > 100 then
-        timer = 0;
-        if inRange(enemy, target, attack_range) then
-            local p = createProjectile("Bullet", "P");
-            p.x = enemy.x;
-            p.y = enemy.y;
-            p.owner = enemy.id;
-            p.vel.x = target.x - enemy.x;
-            p.vel.y = target.y - enemy.y;
-            p.target = target
-            enemy.vel.x = 0;
-            enemy.vel.y = 0;
-            p.setScript(p, "firebolt.lua");
-        else
-            enemy.state = CHASING;
-        end
-    end
-    Timers[enemy.id] = timer;
+    -- end
+    -- Timers[enemy.id] = timer;
 end
 
 
@@ -125,8 +116,7 @@ local function onPatrol(enemy)
 
         if isInMap(new_pos) then
             enemy.target_pos = new_pos;
-            print(enemy.target_pos.y)
-            print("HI")
+            -- print(enemy.target_pos.y)
         end
     end
 
@@ -175,32 +165,20 @@ local function drawAgent(enemy, layers, radius, color, eye_color)
     local thickness = radius / 10.;
     local position = enemy.pos;
     local prev_pos = Vec(position.x + radius, position.y);
-    -- for i = 0, 51 do
-    --     local x = position.x + radius * math.cos(i / 50. * 2. * math.pi);
-    --     local y = position.y + radius * math.sin(i / 50. * 2. * math.pi);
-    --     layers.drawLine(layers, "Unit", prev_pos, Vec(x, y), thickness, color);
-    --     prev_pos = Vec(x, y);
-    -- end
-    -- local left_eye_pos1 = position + Vec(-radius * 0.2, radius * 0.4);
-    -- local left_eye_pos2 = position + Vec(-radius * 0.6, radius * 0.5);
-    -- local right_eye_pos1 = position + Vec(radius * 0.2, radius * 0.4);
-    -- local right_eye_pos2 = position + Vec(radius * 0.6, radius * 0.5);
-    -- layers.drawLine(layers, "Fire", left_eye_pos1, left_eye_pos2, thickness / 2., eye_color);
-    -- layers.drawLine(layers, "Fire", right_eye_pos1, right_eye_pos2, thickness / 2., eye_color);
 
     local texture = getTexture("coin");
     local sprite = Sprite();
     sprite.setTexture(sprite, 0, texture);
     sprite.pos = Vec(enemy.x, enemy.y);
     sprite.scale = Vec(15.,15.);
-    -- if norm(enemy.vel) > 0 then
-    --     sprite.angle = math.deg(math.atan(enemy.vel.y, enemy.vel.x));
-    -- else
-        sprite.angle = math.rad(enemy.angle);
-    -- end
-
+    if norm(enemy.vel) > 0 then
+        sprite.angle = math.deg(math.atan(enemy.vel.y, enemy.vel.x));
+        enemy.angle = sprite.angle;
+    else
+        sprite.angle = enemy.angle;
+    end
     layers.drawSprite(layers, "Wall", sprite, "basicagent");
-    layers.drawLine(layers, "Unit", enemy.pos, enemy.pos + enemy.vel, thickness / 2., eye_color);
+    layers.drawLine(layers, "Unit", enemy.pos, enemy.pos + Vec(0,10), thickness / 2., Color(1, GlobalCooldowns[enemy.id]*5., 0, 1));
 end
 
 function Draw(enemy, layers) --object is the c++ passed function

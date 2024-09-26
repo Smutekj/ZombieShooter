@@ -36,10 +36,20 @@ GameWorld::GameWorld()
     m_pathfinder = std::make_shared<pathfinding::PathFinder>(*m_cdt);
     loadTextures();
 
-    LuaWrapper::loadScript("globals.lua");
-    LuaWrapper::loadScript("quests.lua");
+    if(LuaWrapper::loadScript("globals.lua") == LuaScriptStatus::Broken)
+    {
+        throw std::runtime_error("initialization of globals.lua not succesful!");
+    }
+    if(LuaWrapper::loadScript("Abilities/globals.lua") == LuaScriptStatus::Broken)
+    {
+        throw std::runtime_error("initialization of globals.lua not succesful!");
+    }
+    if(LuaWrapper::loadScript("quests.lua") == LuaScriptStatus::Broken)
+    {
+        throw std::runtime_error("initialization of globals.lua not succesful!");
+    }
 
-    try 
+    try
     {
         m_logger = spdlog::basic_logger_mt("general", "logs/general.txt");
         m_logger->info("PENIS");
@@ -169,30 +179,27 @@ bool GameWorld::kill(const std::string name)
     return true;
 }
 
-void runScriptOnDeath(GameObject* entity)
+void runScriptOnDeath(GameObject *entity)
 {
-    auto lua = LuaWrapper::getSingleton();
-    // lua.runScript("basicai.lua" ,"UpdateAI")
-    int scriptLoadStatus = luaL_dofile(lua->m_lua_state, "../scripts/entitydied.lua");
-    if (scriptLoadStatus)
+
+    if (LuaWrapper::loadScript("entitydied.lua") != LuaScriptStatus::Ok)
     {
-        spdlog::get("lua_logger")->error("Script with name entitydied.lua not done");
         return;
     }
-
-    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "OnEntityDead");
-    if (processFunc.isFunction())
+    auto lua = LuaWrapper::getSingleton();
+    auto on_death = luabridge::getGlobal(lua->m_lua_state, "OnEntityDead");
+    if (on_death.isFunction())
     {
         try
         {
-            processFunc(entity);
+            on_death(entity);
         }
         catch (std::exception &e)
         {
-            std::cout << e.what() << " !\n";
+            std::cout << "ERORR IN OnEntityDead: " << e.what() << " !\n";
         }
     }
-}   
+}
 
 void GameWorld::removeQueuedEntities()
 {
@@ -200,7 +207,6 @@ void GameWorld::removeQueuedEntities()
     {
         auto object = m_to_destroy.front().p_object;
         auto name = m_to_destroy.front().name;
-        object->onDestruction();
         runScriptOnDeath(object.get());
 
         if (object->collides())
@@ -218,7 +224,7 @@ void GameWorld::removeQueuedEntities()
 void GameWorld::destroyObject(int entity_id)
 {
     //! notify observers of destruction
-    if(entity_id == -1)
+    if (entity_id == -1)
     {
         spdlog::get("lua_logger")->error("Cannot destroy entity, it does not exist!");
         return;
@@ -245,8 +251,26 @@ void GameWorld::update(float dt)
 
     removeQueuedEntities();
     addQueuedEntities();
-}
 
+    //! update lua scripts
+    if(LuaWrapper::loadScript("timers.lua") == LuaScriptStatus::Broken) 
+    {
+        return;
+    }
+    auto lua = LuaWrapper::getSingleton();
+    auto updater = luabridge::getGlobal(lua->m_lua_state, "UpdateTimers");
+    if (updater.isFunction())
+    {
+        try
+        {
+            updater(dt);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR In UpdateTimers: " << e.what() << "\n";
+        }
+    }
+}
 
 void GameWorld::draw(LayersHolder &layers)
 {

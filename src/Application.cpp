@@ -112,6 +112,49 @@ void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal
     GameWorld::getWorld().getPathFinder().update();
 }
 
+void Application::initializeLayers()
+{
+    auto width = m_window.getSize().x;
+    auto height = m_window.getSize().y;
+
+    TextureOptions options;
+    options.wrap_x = TexWrapParam::ClampEdge;
+    options.wrap_y = TexWrapParam::ClampEdge;
+
+    TextureOptions text_options; 
+    text_options.data_type = TextureDataTypes::UByte;
+    text_options.format = TextureFormat::RGBA;
+    text_options.internal_format = TextureFormat::RGBA;
+
+    auto &text_layer = m_layers.addLayer("Text", 100, text_options);
+    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
+
+    auto &unit_layer = m_layers.addLayer("Unit", 3, options);
+    // unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
+    unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
+    unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
+
+    auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
+    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
+
+    auto &fire_layer = m_layers.addLayer("Fire", 6, options);
+    fire_layer.addEffect(std::make_unique<Bloom>(width, height));
+
+    auto &wall_layer = m_layers.addLayer("Wall", 0, options);
+    wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
+
+    auto &light_layer = m_layers.addLayer("Light", 150, options);
+    light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
+    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    light_layer.addEffect(std::make_unique<LightCombine>(width, height));
+    light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
+    light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
+
+    auto &water_layer = m_layers.addLayer("Water", 3, options);
+    // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
+    //
+}
+
 Application::Application(int width, int height) : m_window(width, height),
                                                   m_window_renderer(m_window),
                                                   m_scene_pixels(width, height),
@@ -119,7 +162,10 @@ Application::Application(int width, int height) : m_window(width, height),
 {
     using namespace map;
 
+    initializeLayers();
+
     m_font = std::make_shared<Font>("arial.ttf");
+    
     m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
     for (int i = 0; i < 50; ++i)
@@ -132,13 +178,14 @@ Application::Application(int width, int height) : m_window(width, height),
     }
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
+
     p_player = world.addObject(ObjectType::Player, "Player");
     p_player->setPosition({500, 500});
-    world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
+    // world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
 
     world.update(0); //! force insert player to world
 
-    for (int i = 0; i < 100; ++i)
+    for (int i = 0; i < 0; ++i)
     {
         auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
         if (new_enemy)
@@ -153,35 +200,6 @@ Application::Application(int width, int height) : m_window(width, height),
     std::filesystem::path path{"../Resources/"};
     auto shader_filenames = extractNamesInDirectory(path, ".frag");
 
-    TextureOptions options;
-    options.wrap_x = TexWrapParam::ClampEdge;
-    options.wrap_y = TexWrapParam::ClampEdge;
-
-    TextureOptions text_options;
-    text_options.data_type = TextureDataTypes::UByte;
-    text_options.format = TextureFormat::RGBA;
-    text_options.internal_format = TextureFormat::RGBA;
-    auto &text_layer = m_layers.addLayer("Text", 100, text_options);
-    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
-    auto &unit_layer = m_layers.addLayer("Unit", 3, options);
-    // unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
-    unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
-    unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
-    auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
-    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
-    auto &fire_layer = m_layers.addLayer("Fire", 6, options);
-    fire_layer.addEffect(std::make_unique<Bloom>(width, height));
-    auto &wall_layer = m_layers.addLayer("Wall", 0, options);
-    wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
-    auto &light_layer = m_layers.addLayer("Light", 150, options);
-    light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
-    // light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
-    light_layer.addEffect(std::make_unique<LightCombine>(width, height));
-    light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
-    light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
-    auto &water_layer = m_layers.addLayer("Water", 3, options);
-    // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
-    //
     // assert(m_layers.hasLayer("Water"));
     for (auto &filename : shader_filenames)
     {
@@ -610,7 +628,8 @@ void Application::update(float dt = 0.016f)
     health_bar.m_texture_handles[0] = 0;
 
     float x_scale = p_player->m_health / (double)p_player->m_max_health;
-    health_bar.setPosition(150, 570);
+    utils::Vector2f window_size = m_window.getSize();
+    health_bar.setPosition(0.2 * window_size.x, 0.95 * window_size.y);
     health_bar.setScale(100, 15);
     m_window_renderer.drawSprite(health_bar, "healthBar", GL_DYNAMIC_DRAW);
     m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] = x_scale;
@@ -641,7 +660,7 @@ void inline gameLoop(void *mainLoopArg)
     // std::cout << "frame took: " << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic) << "\n";
     double dt = (double)(toc - tic) / CLOCKS_PER_SEC * 1000.f;
     p_app->m_avg_frame_time.addNumber(dt);
-    if(dt < 16.6666)
+    if (dt < 16.6666)
     {
         SDL_Delay(16.6666 - dt);
     }
