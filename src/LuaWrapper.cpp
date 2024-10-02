@@ -234,6 +234,8 @@ static EnviromentEffect *createEffect(lua_State *state)
     std::string object_name = lua_tostring(state, 1);
     std::string script_name = lua_tostring(state, 2);
 
+    auto& world = GameWorld::getWorld();
+
     auto new_obj = GameWorld::getWorld().addObject<EnviromentEffect>(object_name, script_name);
     // GameWorld::getWorld().update(0);
 
