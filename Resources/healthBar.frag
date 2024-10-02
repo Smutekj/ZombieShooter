@@ -9,7 +9,7 @@ out vec4 FragColor;
 
 uniform float u_tex_multiplier = 100.0;
 uniform float u_time_multiplier = 0.9;
-uniform float u_health_percentage = 0.35;
+uniform float u_health_percentage = 1.0;
 uniform vec3 u_color = vec3(1.,0.2,0.);
 uniform vec3 u_color_fire = vec3(1.,1.,0.);
 uniform vec3 u_color_edge = vec3(0.,0.,1.);

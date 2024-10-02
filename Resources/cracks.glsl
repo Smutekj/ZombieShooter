@@ -60,8 +60,8 @@ float cracks(vec2 tex_coord, float scale, float aspect_ratio) {
 	vec2 F = cellular2x2(st*scale);
 
 	vec2 pos = st-.5;
-	float a = 0.;//dot(pos,pos);
+	float a = dot(pos,pos);
 
-	return 1.0-step(abs(sin(a))-.1,.05+(F.x-F.y)*2.) ;
+	return 1.0-smoothstep(abs(sin(a))-.1, abs(sin(a))+.1,.02+(F.x-F.y)*2.) ;
 	
 }
