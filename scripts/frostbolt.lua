@@ -8,6 +8,7 @@ BoltShader = "lightning"
 
 TailCanvas = "Wall";
 BoltCanvas = "Fire";
+BoltSpeed = 25.;
 
 ParticleColors = {
     Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},
@@ -21,15 +22,7 @@ function Updater(particle)
     return particle;
 end
 
-function randVec()
-    rand_angle = math.random()*math.pi;
-    return Vec(math.cos(rand_angle), math.sin(rand_angle));
-end
 
-function randVec(size)
-    rand_angle = math.random()*math.pi;
-    return Vec(size*math.cos(rand_angle), size*math.sin(rand_angle));
-end
 
 function Spawner(spawn_pos, dir)
 

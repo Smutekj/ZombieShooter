@@ -25,7 +25,7 @@ function normalize(v1)
 end
 
 Repulsion_Factor = 2000.5; 
-Exponent = 2;
+Exponent = 1;
 
 function RepulsePairForce(obj1, obj2)
     local dr = Vec(obj2.x - obj1.x, obj2.y - obj1.y);
@@ -52,11 +52,8 @@ end
 
 function RepulsePairForce2(obj1, obj2)
     local dr = Vec(obj2.x - obj1.x, obj2.y - obj1.y);
-    local dist = norm(dr);
+    local dist2 = norm2(dr);
     normalize(dr);
-
-    local prev_norm_vel1 = norm(obj1.vel);
-    local prev_norm_vel2 = norm(obj2.vel);
 
     obj1.vel.x = obj1.vel.x - Repulsion_Factor * dr.x * dist ^ (-Exponent);
     obj1.vel.y = obj1.vel.y - Repulsion_Factor * dr.y * dist ^ (-Exponent);

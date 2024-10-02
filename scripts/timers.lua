@@ -13,4 +13,14 @@ function UpdateTimers(dt)
             end
         end
     end
+
+    UpdateChaseTimers(dt);
 end
+
+
+function UpdateChaseTimers(dt)
+    for i, timer in pairs(ChaseTimers) do
+        ChaseTimers[i] = timer + dt;
+    end
+end
+

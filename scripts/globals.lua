@@ -27,6 +27,15 @@ function normalize(v1)
     v1.y = v1.y / n;
 end
 
+function randVec()
+    rand_angle = 2.*math.random()*math.pi;
+    return Vec(math.cos(rand_angle), math.sin(rand_angle));
+end
+
+function randVec(size)
+    rand_angle = 2.*math.random()*math.pi;
+    return Vec(size*math.cos(rand_angle), size*math.sin(rand_angle));
+end
 
 return 0;
 

@@ -26,6 +26,7 @@ function OnEnemyCreation(enemy, enemy_type)
 
    Entity2Abilities[enemy.id] = {};
    GlobalCooldowns[enemy.id] = 1.;
+   ChaseTimers[enemy.id] = 0.;
 
    EnemyData[enemy_type].initialize(enemy);
 end

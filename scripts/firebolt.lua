@@ -19,6 +19,7 @@ ParticleColors = {
 }
 
 BoltColor = {r = 20.,g = 0.2,b = 0.,a = 1.}
+BoltSpeed = 250.;
 
 function Updater(particle)
     particle.pos = particle.pos + particle.vel;
@@ -61,7 +62,7 @@ end
 function Spawner(spawn_pos, spawn_vel)
 
     local spawn_mult = 0.005;
-    local speed = 20.;
+    local speed = 0.05;
 
     local p = Particle(spawn_pos.x, spawn_pos.y);
 
