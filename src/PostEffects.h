@@ -76,6 +76,32 @@ private:
     Renderer m_downsampler33;
 };
 
+class Bloom3 : public PostEffect
+{
+
+public:
+    Bloom3(int width, int height, TextureOptions options = {});
+
+    virtual void process(Texture &source, Renderer &target) override;
+    virtual ~Bloom3() = default;
+
+
+    void initMips(int n_levels, int width, int height, TextureOptions option);
+    struct TexMip
+    {
+        TexMip(int width, int height, TextureOptions option)
+        : pixels(width, height, option), canvas(pixels), pixels_tmp(width, height, option), canvas_tmp(pixels_tmp)
+        {}
+        FrameBuffer pixels;
+        Renderer canvas;
+        FrameBuffer pixels_tmp;
+        Renderer canvas_tmp;
+    };
+
+private:
+    std::vector<TexMip> m_mips;
+};
+
 class SmoothLight : public PostEffect
 {
 
