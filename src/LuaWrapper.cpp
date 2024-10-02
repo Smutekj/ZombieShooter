@@ -5,6 +5,8 @@
 #include "Enviroment.h"
 #include "Particles.h"
 
+#include <Font.h>
+
 #include <spdlog/spdlog.h>
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -75,15 +77,21 @@ void registerVector(luabridge::Namespace luaNamespace, const char *className)
     // .endNamespace();
 }
 
-LuaScriptStatus LuaWrapper::loadScript(const std::string &script_name)
+static std::filesystem::path getPathToScripts(const std::string &script_name)
 {
-
     std::filesystem::path path = "../scripts/" + script_name;
     auto num_chars = script_name.length();
     if (num_chars >= 4 && script_name.substr(num_chars - 4, num_chars) != ".lua")
     {
         path += ".lua";
     }
+    return path;
+}
+
+LuaScriptStatus LuaWrapper::loadScript(const std::string &script_name)
+{
+
+    std::filesystem::path path = getPathToScripts(script_name);
 
     auto lua = getSingleton();
     auto last_change = std::filesystem::last_write_time(path);
@@ -227,7 +235,8 @@ static EnviromentEffect *createEffect(lua_State *state)
     std::string script_name = lua_tostring(state, 2);
 
     auto new_obj = GameWorld::getWorld().addObject<EnviromentEffect>(object_name, script_name);
-    GameWorld::getWorld().update(0);
+    // GameWorld::getWorld().update(0);
+
     return static_cast<EnviromentEffect *>(new_obj.get());
 }
 
@@ -291,6 +300,27 @@ static GameObject *getObject(lua_State *state)
         return new_obj.get();
     }
     spdlog::get("lua_logger")->error("Object not fetched. Name " + object_name + " does not exist.");
+    return nullptr;
+}
+
+static PlayerEntity *getPlayer(const std::string &player_name)
+{
+    auto new_obj = GameWorld::getWorld().get<PlayerEntity>(player_name);
+    if (new_obj)
+    {
+        return new_obj.get();
+    }
+    spdlog::get("lua_logger")->error("Object not fetched. Name " + player_name + " does not exist.");
+    return nullptr;
+}
+static Enemy *getEnemy(const std::string &enemy_name)
+{
+    auto new_obj = GameWorld::getWorld().get<Enemy>(enemy_name);
+    if (new_obj)
+    {
+        return new_obj.get();
+    }
+    spdlog::get("lua_logger")->error("Object not fetched. Name " + enemy_name + " does not exist.");
     return nullptr;
 }
 
@@ -571,32 +601,94 @@ static Texture *getTexture(lua_State *lua_state)
     return textures.get(texture_id).get();
 };
 
-static void drawSprite(lua_State *lua_state)
+static Font *getFont()
 {
-
-    auto &textures = GameWorld::getWorld().getTextrures();
+    return GameWorld::getWorld().getFont();
 };
+
+static void setVec2InShader(Shader &shader, const std::string &uniform_name, float x, float y)
+{
+    shader.setVec2(uniform_name, {x, y});
+}
+
+static void setVec3InShader(Shader &shader, const std::string &uniform_name, float x, float y, float z)
+{
+    shader.setVec3(uniform_name, {x, y, z});
+}
+
+static void setVec4InShader(Shader &shader, const std::string &uniform_name, float x, float y, float z, float w)
+{
+    shader.setVec4(uniform_name, {x, y, z, w});
+}
+
+static std::vector<GameObject*> findNearsetNeighbours(const utils::Vector2f& center, float radius)
+{
+    const auto& collision_system = GameWorld::getWorld().getCollider();
+    auto r_min = center - utils::Vector2f{radius, radius};
+    auto r_max = center + utils::Vector2f{radius, radius};
+    auto objects = collision_system.findNearestObjects(ObjectType::Enemy, {r_min, r_max});
+    return objects;
+}
 
 //! \brief Registers functions with lua
 void LuaWrapper::initializeLuaFunctions()
 {
-    lua_register(m_lua_state, "createObjectAsChild", createObjectAsChild);
-    lua_register(m_lua_state, "addEffect", addEffect);
-    lua_register(m_lua_state, "setTarget", setTarget);
-    lua_register(m_lua_state, "setVelocity", setVelocity);
 
     using namespace utils;
+
+    luabridge::getGlobalNamespace(m_lua_state)
+        .beginClass<utils::Vector2f>("Vec")
+        .addConstructor<void (*)(float, float)>()
+        .addProperty("x", &Vector2f::x)
+        .addProperty("y", &Vector2f::y)
+        .addFunction("__add", &Vector2f::operator+)
+        // .addFunction("__sub", &Vector2f::oerator-)
+        .endClass()
+        .beginClass<utils::Vector2i>("VecI")
+        .addConstructor<void (*)(float, float)>()
+        .addProperty("x", &Vector2i::x)
+        .addProperty("y", &Vector2i::y)
+        .addFunction("__add", &Vector2i::operator+)
+        // .addFunction("__sub", &Vector2f::oerator-)
+        .endClass();
+
     luabridge::getGlobalNamespace(m_lua_state)
         .beginNamespace("draw")
         .beginClass<LayersHolder>("layers")
+        .addFunction("getCanvas", &LayersHolder::getCanvasP)
         .addFunction("drawSprite", &LayersHolder::drawSprite)
         .addFunction("drawLine", &LayersHolder::drawLine)
+        .addFunction("drawRectangle", &LayersHolder::drawRectangle)
+        .addFunction("toggleActivate", &LayersHolder::activate)
+        .addFunction("isActive", &LayersHolder::isActive)
+        .addFunction("getShader", &LayersHolder::getShaderP)
+        .endClass()
+        .beginClass<Shader>("Shader")
+        .addFunction("setFloat",std::function<void(Shader*, const std::string&, float)>(
+            [](Shader* p_this, const std::string& name, float val){ p_this->setUniform2(name, val);}
+        ))
+        .endClass()
+        .beginClass<UniformType>("Uniform")
+        .endClass()
+        .beginClass<Renderer>("Renderer")
+        .addFunction("drawRectangle",  std::function<void(Renderer*, Rectangle2&, const std::string&, Color)>(
+            [](Renderer* p_this, Rectangle2& r, const std::string& shader_id, Color c){
+                 p_this->drawRectangle(r, c, shader_id, DrawType::Dynamic);}))
+        .addFunction("drawSprite", &Renderer::drawSpriteDynamic)
+        .addFunction("drawText", std::function<void(Renderer*, Text&, const std::string&)>(
+            [](Renderer* p_this, Text& text, const std::string& shader_id){ p_this->drawText(text, shader_id, DrawType::Dynamic);}))
+        .addFunction("drawEllipse", &Renderer::drawEllipseBatched)
+        .addFunction("drawLine", &Renderer::drawLineBatched)
+        .addFunction("render", &Renderer::drawAll)
+        .addFunction("getSize", &Renderer::getTargetSize)
+        .addFunction("getShader", &Renderer::getShaderP)
         .endClass()
         .endNamespace();
 
     luabridge::getGlobalNamespace(m_lua_state)
         .addFunction("createObject", &createObject2)
-        .addFunction("changeParentOf", changeParentOf)
+        .addFunction("createObjectAsChild", &createObjectAsChild)
+        .addFunction("changeParentOf", &changeParentOf)
         .addFunction("createProjectile", &createProjectile)
         .addFunction("createEnemy", &createEnemy)
         .addFunction("createEffect", &createEffect)
@@ -609,16 +701,14 @@ void LuaWrapper::initializeLuaFunctions()
         .addFunction("getName", &getName)
         .addFunction("getIdOf", &getId)
         .addFunction("getObject", &getObject)
-        .addFunction("getTexture", &getTexture);
-
-    luabridge::getGlobalNamespace(m_lua_state)
-        .beginClass<utils::Vector2f>("Vec")
-        .addConstructor<void (*)(float, float)>()
-        .addProperty("x", &Vector2f::x)
-        .addProperty("y", &Vector2f::y)
-        .addFunction("__add", &Vector2f::operator+)
-        // .addFunction("__sub", &Vector2f::oerator-)
-        .endClass();
+        .addFunction("getEnemy", &getEnemy)
+        .addFunction("getPlayer", &getPlayer)
+        .addFunction("getTexture", &getTexture)
+        .addFunction("getFont", &getFont)
+        .addFunction("setVec2Shader", &setVec2InShader)
+        .addFunction("setVec3Shader", &setVec3InShader)
+        .addFunction("setVec4Shader", &setVec4InShader)
+        .addFunction("findEnemies",&findNearsetNeighbours);
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<Color>("Color")
@@ -627,10 +717,19 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("g", &Color::g)
         .addProperty("b", &Color::b)
         .addProperty("a", &Color::a)
+        .endClass()
+        .beginClass<ColorByte>("ColorByte")
+        .addConstructor<void (*)(unsigned char, unsigned char, unsigned char, unsigned char)>()
+        .addProperty("r", &ColorByte::r)
+        .addProperty("g", &ColorByte::g)
+        .addProperty("b", &ColorByte::b)
+        .addProperty("a", &ColorByte::a)
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<Texture>("Texture")
+        .endClass()
+        .beginClass<Font>("Font")
         .endClass()
         .beginClass<Transform>("Transform")
         .addProperty("pos", &Transform::getPosition, &Transform::setPosition)
@@ -638,11 +737,20 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("angle", &Transform::getRotation, &Transform::setRotation)
         .endClass()
         .deriveClass<Rectangle2, Transform>("Rectangle")
+        .addConstructor<void (*)()>()
         .endClass()
         .deriveClass<Sprite2, Rectangle2>("Sprite")
         .addConstructor<void (*)()>()
         .addProperty("color", &Sprite2::m_color)
         .addFunction("setTexture", &Sprite2::setTextureP)
+        .endClass()
+        .deriveClass<Text, Transform>("Text")
+        .addConstructor<void (*)(std::string)>()
+        .addProperty("color", &Text::getColor, &Text::setColor)
+        .addProperty("string", &Text::getText, &Text::setText)
+        .addFunction("setFont", std::function<void(Text*, Font*)>(
+        [](Text* p_this, Font* p_font){if(p_this && p_font){ p_this->setFont(p_font);}}
+        ))
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
@@ -680,7 +788,10 @@ void LuaWrapper::initializeLuaFunctions()
         .deriveClass<Enemy, GameObject>("Enemy")
         .addProperty("state", &Enemy::getState, &Enemy::setState)
         .addProperty("script", &Enemy::getScript, &Enemy::setScript)
+        .addProperty("max_health", &Enemy::m_max_health)
         .addProperty("health", &Enemy::m_health)
+        .addProperty("max_vel", &Enemy::max_vel)
+        .addProperty("max_acc", &Enemy::max_acc)
         .endClass()
         .deriveClass<Projectile, GameObject>("Projectile")
         .addProperty("max_vel", &Projectile::getMaxVel, &Projectile::setMaxVel)
@@ -689,9 +800,11 @@ void LuaWrapper::initializeLuaFunctions()
         .addFunction("setScript", &Projectile::setScriptName)
         .endClass()
         .deriveClass<PlayerEntity, GameObject>("Player")
-        .addProperty("max_vel", &PlayerEntity::getMaxSpeed, &PlayerEntity::setMaxSpeed)
+        .addProperty("max_vel", &PlayerEntity::m_max_speed)
         .addProperty("vision_radius", &PlayerEntity::m_vision_radius)
         .addProperty("health", &PlayerEntity::m_health)
+        .addProperty("max_health", &PlayerEntity::m_max_health)
+        .addProperty("target_enemy", &PlayerEntity::target_enemy)
         .endClass()
         .deriveClass<Event, GameObject>("Event")
         .addProperty("script_name", &Event::m_script_name)
@@ -700,9 +813,11 @@ void LuaWrapper::initializeLuaFunctions()
         .endClass()
         .deriveClass<EnviromentEffect, GameObject>("Effect")
         .addFunction("addParticles", &EnviromentEffect::addParticles)
+        .addProperty("lifetime", &EnviromentEffect::m_lifetime)
         .endClass();
 
     registerVector<Particle>(luabridge::getGlobalNamespace(m_lua_state), "ParticleVector");
+    registerVector<GameObject*>(luabridge::getGlobalNamespace(m_lua_state), "ObjectVector");
 }
 
 //! \brief runs the command if it is registered
@@ -733,19 +848,20 @@ bool LuaWrapper::doString(const std::string &command)
 //! \brief runs the script if it is exists
 bool LuaWrapper::doFile(const std::string &filename)
 {
-    auto file_status = luaL_loadfile(m_lua_state, ("../scripts/" + filename).c_str());
-    if (file_status == LUA_ERRFILE)
+    auto status = loadScript(filename);
+    if (status == LuaScriptStatus::Broken)
     {
-        spdlog::get("lua_logger")->error(" could not load file: " + filename + " !");
         return false;
     }
-    auto call_status = lua_pcall(m_lua_state, 0, LUA_MULTRET, 0);
-    if (lua_isinteger(m_lua_state, -1))
+    if (status == LuaScriptStatus::Ok)
     {
-        auto error_status = lua_tointeger(m_lua_state, -1);
-        if (error_status != LUA_OK)
+        try
         {
-            return false;
+            luaL_dofile(m_lua_state, getPathToScripts(filename).c_str());
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN FILE: " << filename << " : " << e.what() << "\n";
         }
     }
     return true;

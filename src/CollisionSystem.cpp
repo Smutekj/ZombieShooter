@@ -59,7 +59,7 @@ namespace Collisions
             auto &tree_i = m_object_type2tree.at(static_cast<ObjectType>(i));
             for (int j = i; j < static_cast<int>(ObjectType::Count); ++j)
             { //! for all pairs of object trees;
-                if(m_exceptions.count({i,j}) > 0)
+                if (m_exceptions.count({i, j}) > 0)
                 {
                     continue;
                 }
@@ -87,13 +87,15 @@ namespace Collisions
             }
             m_collided.insert({i1, i2});
 
-            auto collision_data = getCollisionData(obj1.getCollisionShape(), obj2.getCollisionShape());
+            CollisionData collision_data;
+            collision_data = getCollisionData(obj1.getCollisionShape(), obj2.getCollisionShape());
+
             if (collision_data.minimum_translation > 0) //! there is a collision
             {
-                if (obj1.doesPhysics() && obj2.doesPhysics()) //! if both objects have rigid bodies we do physics
-                {
-                    bounce(obj1, obj2, collision_data);
-                }
+                // if (obj1.doesPhysics() && obj2.doesPhysics()) //! if both objects have rigid bodies we do physics
+                // {
+                //     bounce(obj1, obj2, collision_data);
+                // }
 
                 obj1.onCollisionWith(obj2, collision_data);
                 obj2.onCollisionWith(obj1, collision_data);
@@ -120,20 +122,20 @@ namespace Collisions
             c_data.separation_axis *= -1.f;
         }
 
-        auto col_feats1 = obtainFeatures(c_data.separation_axis, points_a);
-        auto col_feats2 = obtainFeatures(-1.f * c_data.separation_axis, points_b);
+        // auto col_feats1 = obtainFeatures(c_data.separation_axis, points_a);
+        // auto col_feats2 = obtainFeatures(-1.f * c_data.separation_axis, points_b);
 
-        auto clipped_edge = clipEdges(col_feats1, col_feats2, c_data.separation_axis);
-        if (clipped_edge.size() == 0) //! clipping failed so we don't do collision
-        {
-            c_data.minimum_translation = -1.f;
-            return c_data;
-        }
-        for (auto ce : clipped_edge)
-        {
-            c_data.contact_point += ce;
-        }
-        c_data.contact_point /= (float)clipped_edge.size();
+        // auto clipped_edge = clipEdges(col_feats1, col_feats2, c_data.separation_axis);
+        // if (clipped_edge.size() == 0) //! clipping failed so we don't do collision
+        // {
+        //     c_data.minimum_translation = -1.f;
+        //     return c_data;
+        // }
+        // for (auto ce : clipped_edge)
+        // {
+        //     c_data.contact_point += ce;
+        // }
+        // c_data.contact_point /= (float)clipped_edge.size();
 
         return c_data;
     }
@@ -169,9 +171,7 @@ namespace Collisions
         auto &tree = m_object_type2tree.at(type);
         Polygon p2(4);
         p2.setPosition(collision_rect.getCenter());
-        p2.setScale(collision_rect.getSize()/2.f);
-        std::cout << collision_rect.r_min << "\n";
-        std::cout << collision_rect.r_max << "\n";
+        p2.setScale(collision_rect.getSize() / 2.f);
         auto nearest_inds = tree.findIntersectingLeaves(collision_rect);
         std::vector<GameObject *> objects;
         for (auto ind : nearest_inds)
@@ -181,10 +181,33 @@ namespace Collisions
             if (collision_data.minimum_translation > 0) //! there is a collision
             {
                 objects.push_back(&obj);
-
             }
         }
         return objects;
+    }
+    std::vector<GameObject *> CollisionSystem::findNearestObjects(AABB collision_rect) const
+    {
+
+        std::vector<GameObject *> objects;
+        auto n_types = static_cast<int>(ObjectType::Count);
+        for (int i = 0; i < n_types; ++i)
+        {
+            auto &tree = m_object_type2tree.at(static_cast<ObjectType>(i));
+            Polygon p2(4);
+            p2.setPosition(collision_rect.getCenter());
+            p2.setScale(collision_rect.getSize() / 2.f);
+            auto nearest_inds = tree.findIntersectingLeaves(collision_rect);
+            for (auto ind : nearest_inds)
+            {
+                auto &obj = *m_objects.at(ind).lock();
+                // auto collision_data = getCollisionData(obj.getCollisionShape(), p2);
+                // if (collision_data.minimum_translation > 0) //! there is a collision
+                {
+                    objects.push_back(&obj);
+                }
+            }
+        }
+            return objects;
     }
 
     utils::Vector2f CollisionSystem::findClosestIntesection(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length)

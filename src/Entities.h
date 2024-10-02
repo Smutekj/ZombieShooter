@@ -24,12 +24,36 @@ struct Statuses
 
 };
 
+enum class CombatState
+{
+    Casting,
+    Attacking,
+    Shooting,
+    None, // 
+};
+
+enum class DisabilityState
+{
+    Silenced,
+    Rooted,
+    Feared,
+    Frozen,
+    Stunned,
+    Disarmed,
+};
+
+// struct DisabilitiesTable
+// {
+//     std::array
+// };
+
+class Enemy;
 class PlayerEntity : public GameObject
 {
 
 public:
     PlayerEntity() = default;
-    PlayerEntity(GameWorld *world, TextureHolder &textures);
+    PlayerEntity(TextureHolder &textures);
     virtual ~PlayerEntity() override {}
 
     virtual void update(float dt) override;
@@ -39,17 +63,25 @@ public:
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
     void setMaxSpeed(float max_speed);
-
     float getMaxSpeed() const;
+
+private:
+    void doScript();
 
 public:
 
-    int m_health = 200;
-    int m_max_health = 200;
-    float m_vision_radius = 50.f;
+    float m_health = 200;
+    float m_max_health = 200;
+    float m_vision_radius = 300.f;
+    float m_max_speed = 300.f;
+    float m_cast_time = -1.f;
+
+    CombatState m_combat_state = CombatState::None;
+    Enemy* target_enemy = nullptr;
+
 
 private:
-    float m_max_speed = 100.f;
+    std::unordered_set<DisabilityState> m_disabilities;
 
     VisionField m_vision;
     VertexArray m_vision_verts;
@@ -163,11 +195,12 @@ private:
     void doScript();
 
 public:
-    float max_vel = 40.f;
-    const float max_acc = 50.f;
-    const float max_impulse_vel = 40.f;
+    float max_vel = 100.f;
+    float max_acc = 150.f;
+    float max_impulse_vel = 40.f;
 
-    float m_health = 5;
+    float m_health = 10;
+    float m_max_health = 10;
     utils::Vector2f m_impulse = {0, 0};
 
     utils::Vector2f m_next_path = {-1, -1};
@@ -180,6 +213,8 @@ public:
     static std::unordered_map<Multiplier, float> m_force_ranges;
 
 private:
+    std::function<void()> m_ai_updater;
+
     float m_boid_radius = 30.f;
     utils::Vector2f m_acc = {0, 0};
 
@@ -190,7 +225,7 @@ private:
     bool m_is_avoiding = false;
 
     int m_pathfinding_timer = 0;
-    int m_pathfinding_cd = 150;
+    int m_pathfinding_cd = 120;
     std::string m_script_name = "basicai.lua";
 };
 

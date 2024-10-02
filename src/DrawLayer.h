@@ -62,6 +62,9 @@ struct LayersHolder
     bool hasLayer(const std::string &name);
 
     std::shared_ptr<DrawLayer> getLayer(const std::string &name);
+
+    Shader* getShaderP(const std::string& layer, const std::string& shader_id);
+
     void changeDepth(std::string name, int new_depth);
 
     void clearAllLayers();
@@ -71,23 +74,41 @@ struct LayersHolder
         auto p_canvas = getCanvasP(layer);
         if (p_canvas)
         {
-            p_canvas->drawSprite(sprite, shader_id, GL_DYNAMIC_DRAW);
+            p_canvas->drawSprite(sprite, shader_id, DrawType::Dynamic);
         }
     }
-    void drawLine(const std::string &layer, 
-                utils::Vector2f start,  utils::Vector2f end, float thickness, Color c = {0,1,0,1})
+    void drawLine(const std::string &layer,
+                  utils::Vector2f start, utils::Vector2f end, float thickness, Color color = {0, 1, 0, 1})
     {
         auto p_canvas = getCanvasP(layer);
         if (p_canvas)
         {
-            p_canvas->drawLineBatched(start, end, thickness, c, GL_DYNAMIC_DRAW);
+            p_canvas->drawLineBatched(start, end, thickness, color, DrawType::Dynamic);
         }
     }
+    void drawRectangle(const std::string &layer, Rectangle2 &rect, const std::string &shader_id, Color color = {1, 0, 0, 1})
+    {
+        auto p_canvas = getCanvasP(layer);
+        if (p_canvas)
+        {
+            p_canvas->drawRectangle(rect, color, shader_id, DrawType::Dynamic);
+        }
+    }
+    // void drawEllipse(const std::string &layer, Ellipse &e,
+    //                  const std::string &shader_id, Color color = {1, 0, 0, 1})
+    // {
+    //     auto p_canvas = getCanvasP(layer);
+    //     if (p_canvas)
+    //     {
+    //         p_canvas->drawCricleBatched(e.getPosition(), e.getRotation(), e.getScale().x, e.getScale().y, color, 32, shader_id);
+    //     }
+    // }
 
     Renderer &getCanvas(const std::string &name);
     Renderer *getCanvasP(const std::string &name);
     FrameBuffer &getPixels(std::string name);
-    void activate(std::string name);
+    void activate(const std::string& name);
+    bool isActive(const std::string& name);
 
     void draw(Renderer &target, const View &view);
 

@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include <Renderer.h>
+#include <Font.h>
 #include <Utils/IO.h>
 
 #include "Entities.h"
@@ -36,15 +37,15 @@ GameWorld::GameWorld()
     m_pathfinder = std::make_shared<pathfinding::PathFinder>(*m_cdt);
     loadTextures();
 
-    if(LuaWrapper::loadScript("globals.lua") == LuaScriptStatus::Broken)
+    if (LuaWrapper::loadScript("globals.lua") == LuaScriptStatus::Broken)
     {
         throw std::runtime_error("initialization of globals.lua not succesful!");
     }
-    if(LuaWrapper::loadScript("Abilities/globals.lua") == LuaScriptStatus::Broken)
+    if (LuaWrapper::loadScript("Abilities/globals.lua") == LuaScriptStatus::Broken)
     {
         throw std::runtime_error("initialization of globals.lua not succesful!");
     }
-    if(LuaWrapper::loadScript("quests.lua") == LuaScriptStatus::Broken)
+    if (LuaWrapper::loadScript("quests.lua") == LuaScriptStatus::Broken)
     {
         throw std::runtime_error("initialization of globals.lua not succesful!");
     }
@@ -115,7 +116,7 @@ std::shared_ptr<GameObject> GameWorld::addObject(ObjectType type, std::string ob
     switch (type)
     {
     case ObjectType::Player:
-        new_object = std::make_shared<PlayerEntity>(this, m_textures);
+        new_object = std::make_shared<PlayerEntity>(m_textures);
         break;
     case ObjectType::Bullet:
         new_object = std::make_shared<Projectile>(this, m_textures);
@@ -130,7 +131,14 @@ std::shared_ptr<GameObject> GameWorld::addObject(ObjectType type, std::string ob
         throw std::runtime_error("You forgot to add the new object here!");
     }
 
+    int i = 0;
+    while (m_name2id.count(object_name) > 0)
+    {
+        object_name += std::to_string(i);
+        i++; //! if name already exists we upgrade the name using object id
+    }
     new_object->m_name = object_name;
+
     m_to_add.push({new_object, object_name, parent_id});
     addQueuedEntities();
     return new_object;
@@ -142,11 +150,13 @@ void GameWorld::addQueuedEntities()
     {
         auto new_object = m_to_add.front().p_object;
         auto new_name = m_to_add.front().name;
+
         auto new_parent = m_to_add.front().parent;
         m_to_add.pop();
 
         //! THIS NEEDS TO BE FIRST!!!
         auto new_id = m_entities.addObject(new_object);
+
         m_entities.at(new_id)->m_id = new_id;
         m_scene.addObject(new_object);
 
@@ -253,7 +263,7 @@ void GameWorld::update(float dt)
     addQueuedEntities();
 
     //! update lua scripts
-    if(LuaWrapper::loadScript("timers.lua") == LuaScriptStatus::Broken) 
+    if (LuaWrapper::loadScript("timers.lua") == LuaScriptStatus::Broken)
     {
         return;
     }
@@ -274,9 +284,30 @@ void GameWorld::update(float dt)
 
 void GameWorld::draw(LayersHolder &layers)
 {
-    for (auto &obj : m_entities.getObjects())
+    auto player = get<PlayerEntity>("Player");
+    auto view = layers.getCanvas("Unit").m_view;
+    auto r_min = player->getPosition() - view.getScale();
+    auto r_max = player->getPosition() + view.getScale();
+    auto objects = m_collision_system.findNearestObjects({r_min,r_max});
+
+    for (auto &obj : objects)
     {
         obj->draw(layers);
+    }
+
+    //! draw stuff from lua
+    auto lua = LuaWrapper::getSingleton();
+    auto drawer = luabridge::getGlobal(lua->m_lua_state, "Draw");
+    if (drawer.isFunction())
+    {
+        try
+        {
+            drawer(layers);
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "ERROR IN Draw: " << e.what() << "\n";
+        }
     }
 }
 
@@ -329,6 +360,8 @@ void GameWorld::loadTextures()
     m_shaders.load("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");
     m_shaders.load("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
     m_shaders.load("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
+
+    m_font = std::make_shared<Font>("arial.ttf");
 }
 //
 // static ConcreteEntityHolder<PlayerEntity> s_player_holder;

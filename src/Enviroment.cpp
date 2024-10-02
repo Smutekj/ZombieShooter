@@ -19,7 +19,12 @@ EnviromentEffect::EnviromentEffect(TextureHolder &textures)
 EnviromentEffect::EnviromentEffect(TextureHolder &textures, const std::string &script_name)
     : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect), m_script_name(script_name)
 {
-    loadFromScript(script_name);
+    auto status = LuaWrapper::loadScript(script_name);
+    if(status != LuaScriptStatus::Broken)
+    {
+        loadFromScript(script_name);
+    }
+    m_collision_shape = std::make_unique<Polygon>(4);
 }
 
 static void setEmitter(Particles &particles, luabridge::LuaRef spawner, utils::Vector2f &vel)
@@ -169,7 +174,7 @@ FloatingText::FloatingText(ShaderHolder &shaders, TextureHolder &textures)
     {
         random_font = std::make_shared<Font>("arial.ttf");
     }
-    m_text.setFont(random_font);
+    m_text.setFont(random_font.get());
     m_text.setText("TestFloat");
 }
 
@@ -181,7 +186,7 @@ void FloatingText::draw(LayersHolder &layers)
     auto &canvas = layers.getCanvas("Text");
     m_text.setColor(text_color);
     canvas.getShader("Text").getVariables().uniforms["u_edge_color"] = ec;
-    canvas.drawText(m_text, "Text", GL_DYNAMIC_DRAW);
+    canvas.drawText(m_text, "Text", DrawType::Dynamic);
 }
 
 void FloatingText::update(float dt)
@@ -225,21 +230,28 @@ void EnviromentEffect::doScript(const std::string &script_name)
 
 void EnviromentEffect::update(float dt)
 {
-    loadFromScript(m_script_name);
+
+    if(m_lifetime > 0.f)
+    {
+        m_time += dt;
+        if(m_time > m_lifetime)
+        {
+            kill();
+        }
+    }
 
     for (auto &[particles_name, draw_data] : m_particles_holder)
     {
         draw_data.particles.setSpawnPos(m_pos);
         draw_data.particles.update(dt);
     }
-    // if ()
+
+    auto script_status = LuaWrapper::loadScript(m_script_name);
+    if (script_status == LuaScriptStatus::Ok  || script_status == LuaScriptStatus::Broken)
     {
-        m_transform.setPosition(0.f, 0.f);
-        // if (m_time > m_lifetime)
-        // {
-        //     kill();
-        // }
-        
+        return; //! do nothing since nothing changed or the file is broken
+    }else{
+        loadFromScript(m_script_name);
     }
 }
 void EnviromentEffect::draw(LayersHolder &layers)
@@ -261,16 +273,6 @@ void EnviromentEffect::draw(LayersHolder &layers)
 void EnviromentEffect::loadFromScript(const std::string &script_name)
 {
     auto lua = LuaWrapper::getSingleton();
-
-    auto script_status = LuaWrapper::loadScript(script_name);
-    if (script_status == LuaScriptStatus::Ok)
-    {
-        return; //! do nothing since nothing changed
-    }
-    else if (script_status == LuaScriptStatus::Broken)
-    {
-        return; //! do nothing since the file is broken
-    }
 
     auto data_table_penis = getTable(lua->m_lua_state, "Effect");
     auto data_table = data_table_penis.cast<std::unordered_map<std::string, luabridge::LuaRef>>();

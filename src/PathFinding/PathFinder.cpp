@@ -57,7 +57,6 @@ void dumpPathToFile(const std::deque<cdt::Vector2f> &path, float radius, std::st
 
 PathFinder::PathData PathFinder::doPathFinding(const cdt::Vector2f r_start, const cdt::Vector2f r_end, const float radius)
 {
-
     Funnel funnel;
     findSubOptimalPathCenters(r_start, r_end, radius, funnel);
 
@@ -66,7 +65,6 @@ PathFinder::PathData PathFinder::doPathFinding(const cdt::Vector2f r_start, cons
     funnel.push_back({r_end, r_end});
 
     return pathFromFunnel(r_start, r_end, radius, funnel);
-    ;
 }
 
 //! \brief finds sequence of triangles such that the path going through centers of the triangles is the shortest

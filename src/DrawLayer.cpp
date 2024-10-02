@@ -70,7 +70,7 @@ void DrawLayer::drawDirectly(Renderer &canvas)
     canvas.m_view.setCenter(screen_sprite.getPosition());
     canvas.m_view.setSize(target_size);
 
-    canvas.drawSprite(screen_sprite, "Instanced", GL_DYNAMIC_DRAW);
+    canvas.drawSprite(screen_sprite, "Instanced", DrawType::Dynamic);
     canvas.drawAll();
     canvas.m_view = old_view;
 }
@@ -116,7 +116,7 @@ std::shared_ptr<DrawLayer> LayersHolder::getLayer(const std::string &name)
 }
 
 
-void LayersHolder::activate(std::string name)
+void LayersHolder::activate(const std::string& name)
 {
     auto layer = getLayer(name);
     if (layer)
@@ -125,6 +125,31 @@ void LayersHolder::activate(std::string name)
     }
 }
 
+bool LayersHolder::isActive(const std::string& name)
+{
+    auto layer = getLayer(name);
+    if (layer)
+    {
+        return layer->isActive();
+    }
+    return false;
+}
+
+
+Shader* LayersHolder::getShaderP(const std::string& layer_name, const std::string& shader_id)
+{
+    auto layer = getLayer(layer_name);
+    if (layer)
+    {
+        
+        auto& canvas = layer->m_canvas;
+        if(canvas.hasShader(shader_id))
+        {
+            return &canvas.getShader(shader_id); 
+        }
+    }
+    return nullptr;
+}
 void LayersHolder::changeDepth(std::string name, int new_depth)
 {
 

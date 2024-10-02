@@ -18,8 +18,8 @@
 
 namespace map
 {
-    constexpr int MAP_SIZE_X = 1000;
-    constexpr int MAP_SIZE_Y = 1000;
+    constexpr int MAP_SIZE_X = 5000;
+    constexpr int MAP_SIZE_Y = 5000;
     constexpr int MAP_GRID_CELLS_X = 50;
     constexpr int MAP_GRID_CELLS_Y = MAP_GRID_CELLS_X;
 } //! namespace map
@@ -142,14 +142,14 @@ public:
     {
         for (auto &root : m_roots)
         {
-            updateRoot(root);
+            updateRoot(root, dt);
         }
     }
 
-    void updateRoot(int root_ind)
+    void updateRoot(int root_ind, float dt)
     {
         auto &root = m_nodes.at(root_ind);
-        root.p_object->update(0.01f);
+        root.p_object->update(dt);
         std::queue<int> to_visit;
         for (auto &child : root.children)
         {
@@ -171,7 +171,7 @@ public:
             auto parent_pos = parent_obj->getPosition();
             curr_node.p_object->m_transform.transform(parent_pos);
             curr_node.p_object->setPosition(parent_pos);
-            curr_node.p_object->update(0.01f);
+            curr_node.p_object->update(dt);
         }
     }
 
@@ -403,6 +403,11 @@ public:
         return m_collision_system;
     }
 
+    Font* getFont() 
+    {
+        return m_font.get();
+    }
+
 private:
     void addQueuedEntities();
     void removeQueuedEntities();
@@ -429,6 +434,8 @@ private:
     std::queue<NewObjectData> m_to_destroy;
 
     TextureHolder m_textures;
+    std::shared_ptr<Font> m_font = nullptr;
+
     PlayerEntity *m_player;
 
     std::shared_ptr<spdlog::logger> m_logger;
@@ -459,6 +466,10 @@ std::shared_ptr<EntityType> GameWorld::addObject(const std::string name, Args...
 {
     // static_assert(std::is_base_of_v<EnviromentEffect, EffectType>());
     NewObjectData new_obj;
+    if(m_name2id.count(name) > 0)
+    {
+        return nullptr;
+    }
     auto ptr_obj = std::make_shared<EntityType>(m_textures, args...);
     new_obj.p_object = ptr_obj;
     new_obj.name = name;

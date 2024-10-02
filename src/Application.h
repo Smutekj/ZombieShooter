@@ -109,8 +109,7 @@ public:
         }
 
         auto edges = map.extractEdges();
-        std::vector<cdt::EdgeVInd> edge_inds;
-
+        
         i = 0;
         for (auto &e : edges)
         {
@@ -179,6 +178,8 @@ public:
     void handleInput();
 
 private:
+    void drawUI(float dt);
+
     void onKeyPress(SDL_Keycode key);
     void onKeyRelease(SDL_Keycode key);
     void onMouseButtonPress(SDL_MouseButtonEvent event);
@@ -217,6 +218,8 @@ private:
     utils::Vector2f m_old_view_center;
     utils::Vector2f m_mouse_click_position;
     utils::Vector2f m_selection_click_pos ;
+    utils::Vector2f m_old_player_dir ;
+    float m_old_angle ;
     bool m_is_selecting = false;
     bool m_wheel_is_held = false;
 
@@ -225,7 +228,11 @@ private:
     bool m_is_moving_up = false;
     bool m_is_moving_down = false;
     
+    bool m_is_turning_right = false;
+    bool m_is_turning_left = false;
     bool m_is_sprinting = false;
+    bool m_is_turning = false;
+
 
     float m_time = 0.f;
     std::chrono::high_resolution_clock::time_point tic;
@@ -237,7 +244,7 @@ private:
 
     std::unique_ptr<MapGridDiagonal> m_map;
 
-    std::shared_ptr<GameObject> p_player;
+    std::shared_ptr<PlayerEntity> p_player;
 
     std::shared_ptr<Font> m_font;
 

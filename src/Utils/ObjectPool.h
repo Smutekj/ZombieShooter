@@ -128,6 +128,7 @@ public:
         objects.pop_back();
 
         entity2ind.at(entity_ind) = -1;
+
     }
 
     constexpr const DataType &at(int entity_ind) const

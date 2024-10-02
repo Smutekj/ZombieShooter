@@ -51,6 +51,9 @@ public:
         Particles particles;
     };
 
+    float m_lifetime = -1.f;
+    float m_time = 0.f;
+
 protected:
     std::string m_script_name = "testeffect.lua";
     std::unordered_map<std::string, Color> m_colors;

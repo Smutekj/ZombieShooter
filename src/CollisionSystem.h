@@ -77,6 +77,7 @@ namespace Collisions
         std::vector<int> findNearestObjectInds(ObjectType type, utils::Vector2f center, float radius) const;
         std::vector<GameObject *> findNearestObjects(ObjectType type, utils::Vector2f center, float radius) const;
         std::vector<GameObject *> findNearestObjects(ObjectType type, AABB colllision_rect) const;
+        std::vector<GameObject *> findNearestObjects(AABB colllision_rect) const;
         utils::Vector2f findClosestIntesection(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length) ;
 
     private:

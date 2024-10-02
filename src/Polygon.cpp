@@ -17,12 +17,11 @@
 
   std::vector<utils::Vector2f> Polygon::getPointsInWorld() 
   {
-
-    std::vector<utils::Vector2f> world_points;
-    for (int i = 0; i < points.size(); ++i)
+    auto n_points = points.size();
+    std::vector<utils::Vector2f> world_points = points;
+    for (int i = 0; i < n_points; ++i)
     {
-      world_points.push_back(points[i]);
-      transform(world_points.back());
+      transform(world_points[i]);
     }
     return world_points;
   }

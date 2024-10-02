@@ -47,19 +47,19 @@ void Bloom::process(Texture &source, Renderer &target)
     m_bloom_renderer1.clear({0, 0, 0, 0});
     m_bloom_renderer2.clear({0, 0, 0, 0});
 
-    m_bloom_renderer2.drawSprite(screen_sprite, "brightness", GL_DYNAMIC_DRAW);
+    m_bloom_renderer2.drawSprite(screen_sprite, "brightness", DrawType::Dynamic);
     m_bloom_renderer2.drawAll();
 
     for (int pass = 0; pass < 4; ++pass)
     {
         m_bloom_renderer1.clear({0, 0, 0, 0});
         screen_sprite.setTexture(m_bloom_pass2.getTexture());
-        m_bloom_renderer1.drawSprite(screen_sprite, "gaussVert", GL_DYNAMIC_DRAW);
+        m_bloom_renderer1.drawSprite(screen_sprite, "gaussVert", DrawType::Dynamic);
         m_bloom_renderer1.drawAll();
 
         m_bloom_renderer2.clear({0, 0, 0, 0});
         screen_sprite.setTexture(m_bloom_pass1.getTexture());
-        m_bloom_renderer2.drawSprite(screen_sprite, "gaussHoriz", GL_DYNAMIC_DRAW);
+        m_bloom_renderer2.drawSprite(screen_sprite, "gaussHoriz", DrawType::Dynamic);
         m_bloom_renderer2.drawAll();
     }
 
@@ -72,7 +72,7 @@ void Bloom::process(Texture &source, Renderer &target)
     target.m_view.setSize(pixels_size);
 
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
-    target.drawSprite(screen_sprite, "combineBloom", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineBloom", DrawType::Dynamic);
     target.drawAll();
 
     target.m_view = old_view;
@@ -118,7 +118,7 @@ void Bloom2::process(Texture &source, Renderer &target)
     //! BRIGHTNESS PASS
     screen_sprite.setTexture(source);
     m_downsampler3.clear({0, 0, 0, 0});
-    m_downsampler3.drawSprite(screen_sprite, "brightness", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "brightness", DrawType::Dynamic);
     m_downsampler3.drawAll();
 
     auto size = m_downsampled_pixels3.getSize();
@@ -128,7 +128,7 @@ void Bloom2::process(Texture &source, Renderer &target)
     m_downsampler33.m_view.setCenter(size / 2.f);
     m_downsampler33.m_view.setSize(size);
     m_downsampler33.clear({0, 0, 0, 0});
-    m_downsampler33.drawSprite(screen_sprite, "gaussVert", GL_DYNAMIC_DRAW);
+    m_downsampler33.drawSprite(screen_sprite, "gaussVert", DrawType::Dynamic);
     m_downsampler33.drawAll();
     // writeTextureToFile("../", "testfile33.png", m_downsampled_pixels33);
     screen_sprite.setTexture(m_downsampled_pixels33.getTexture());
@@ -136,7 +136,7 @@ void Bloom2::process(Texture &source, Renderer &target)
     m_downsampler3.m_view.setSize(size);
     screen_sprite.setPosition(size / 2);
     screen_sprite.setScale(size / 2);
-    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", DrawType::Dynamic);
     m_downsampler3.clear({0, 0, 0, 0});
     m_downsampler3.drawAll();
     // writeTextureToFile("../", "testfile3.png", m_downsampled_pixels3);
@@ -148,7 +148,7 @@ void Bloom2::process(Texture &source, Renderer &target)
     screen_sprite.setScale(pixels_size / 2.f);
     target.m_view.setCenter(pixels_size / 2.f);
     target.m_view.setSize(pixels_size);
-    target.drawSprite(screen_sprite, "combineBloomBetter", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineBloomBetter", DrawType::Dynamic);
 
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha};
     target.drawAll();
@@ -200,7 +200,7 @@ void SmoothLight::process(Texture &source, Renderer &target)
     //! BRIGHTNESS PASS
     screen_sprite.setTexture(source);
     m_downsampler3.clear({0, 0, 0, 0});
-    m_downsampler3.drawSprite(screen_sprite, "brightness", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "brightness", DrawType::Dynamic);
     m_downsampler3.drawAll();
 
     auto size = m_downsampled_pixels3.getSize();
@@ -210,7 +210,7 @@ void SmoothLight::process(Texture &source, Renderer &target)
     m_downsampler33.m_view.setCenter(size / 2.f);
     m_downsampler33.m_view.setSize(size);
     m_downsampler33.clear({0, 0, 0, 0});
-    m_downsampler33.drawSprite(screen_sprite, "gaussVert", GL_DYNAMIC_DRAW);
+    m_downsampler33.drawSprite(screen_sprite, "gaussVert", DrawType::Dynamic);
     m_downsampler33.drawAll();
     // writeTextureToFile("../", "testfile33.png", m_downsampled_pixels33);
     screen_sprite.setTexture(m_downsampled_pixels33.getTexture());
@@ -218,7 +218,7 @@ void SmoothLight::process(Texture &source, Renderer &target)
     m_downsampler3.m_view.setSize(size);
     screen_sprite.setPosition(size / 2);
     screen_sprite.setScale(size / 2);
-    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", DrawType::Dynamic);
     m_downsampler3.clear({0, 0, 0, 0});
     m_downsampler3.drawAll();
     // writeTextureToFile("../", "testfile3.png", m_downsampled_pixels3);
@@ -230,7 +230,7 @@ void SmoothLight::process(Texture &source, Renderer &target)
     screen_sprite.setScale(pixels_size / 2.f);
     target.m_view.setCenter(pixels_size / 2.f);
     target.m_view.setSize(pixels_size);
-    target.drawSprite(screen_sprite, "combineLightBloom", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineLightBloom", DrawType::Dynamic);
 
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha};
     target.drawAll();
@@ -263,7 +263,7 @@ void LightCombine::process(Texture &source, Renderer &target)
     screen_sprite.setTexture(0, source);
     target.m_view.setCenter(target_size / 2.f);
     target.m_view.setSize(target_size);
-    target.drawSprite(screen_sprite, "combineLight", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineLight", DrawType::Dynamic);
 
     target.m_blend_factors = {bf::Zero, bf::SrcColor, bf::One, bf::Zero};
     target.drawAll();
@@ -313,7 +313,7 @@ void BloomSmoke::process(Texture &source, Renderer &target)
     //! BRIGHTNESS PASS
     screen_sprite.setTexture(source);
     m_downsampler3.clear({0, 0, 0, 0});
-    m_downsampler3.drawSprite(screen_sprite, "brightness", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "brightness", DrawType::Dynamic);
     m_downsampler3.drawAll();
 
     auto size = m_downsampled_pixels3.getSize();
@@ -323,7 +323,7 @@ void BloomSmoke::process(Texture &source, Renderer &target)
     m_downsampler33.m_view.setCenter(size / 2.f);
     m_downsampler33.m_view.setSize(size);
     m_downsampler33.clear({0, 0, 0, 0});
-    m_downsampler33.drawSprite(screen_sprite, "gaussVert", GL_DYNAMIC_DRAW);
+    m_downsampler33.drawSprite(screen_sprite, "gaussVert", DrawType::Dynamic);
     m_downsampler33.drawAll();
     // writeTextureToFile("../", "testfile33.png", m_downsampled_pixels33);
     screen_sprite.setTexture(m_downsampled_pixels33.getTexture());
@@ -331,7 +331,7 @@ void BloomSmoke::process(Texture &source, Renderer &target)
     m_downsampler3.m_view.setSize(size);
     screen_sprite.setPosition(size / 2);
     screen_sprite.setScale(size / 2);
-    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", GL_DYNAMIC_DRAW);
+    m_downsampler3.drawSprite(screen_sprite, "gaussHoriz", DrawType::Dynamic);
     m_downsampler3.clear({0, 0, 0, 0});
     m_downsampler3.drawAll();
     // writeTextureToFile("../", "testfile3.png", m_downsampled_pixels3);
@@ -343,7 +343,7 @@ void BloomSmoke::process(Texture &source, Renderer &target)
     screen_sprite.setScale(pixels_size / 2.f);
     target.m_view.setCenter(pixels_size / 2.f);
     target.m_view.setSize(pixels_size);
-    target.drawSprite(screen_sprite, "combineSmoke", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineSmoke", DrawType::Dynamic);
 
     target.m_blend_factors = {bf::SrcAlpha, bf::OneMinusSrcAlpha};
     target.drawAll();
@@ -387,19 +387,19 @@ void EdgeDetect::process(Texture &source, Renderer &target)
     //! BRIGHTNESS PASS
     screen_sprite.setTexture(source);
     m_vert_canvas.clear({0, 0, 0, 0});
-    m_vert_canvas.drawSprite(screen_sprite, "edgeDetectVert", GL_DYNAMIC_DRAW);
+    m_vert_canvas.drawSprite(screen_sprite, "edgeDetectVert", DrawType::Dynamic);
     m_vert_canvas.drawAll();
 
     m_horiz_canvas.clear({0, 0, 0, 0});
     screen_sprite.setTexture(m_vert_pass.getTexture());
-    m_horiz_canvas.drawSprite(screen_sprite, "edgeDetectHoriz", GL_DYNAMIC_DRAW);
+    m_horiz_canvas.drawSprite(screen_sprite, "edgeDetectHoriz", DrawType::Dynamic);
     m_horiz_canvas.drawAll();
 
     screen_sprite.setTexture(0, source);
     screen_sprite.setTexture(1, m_horiz_pass.getTexture());
     target.m_view.setCenter(target_size / 2.f);
     target.m_view.setSize(target_size);
-    target.drawSprite(screen_sprite, "combineEdges", GL_DYNAMIC_DRAW);
+    target.drawSprite(screen_sprite, "combineEdges", DrawType::Dynamic);
 
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha};
     target.drawAll();

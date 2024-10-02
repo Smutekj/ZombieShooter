@@ -61,25 +61,29 @@ void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color co
     {
         float x = pos.x + radius * std::cos(i / 50. * 2. * M_PIf);
         float y = pos.y + radius * std::sin(i / 50. * 2. * M_PIf);
-        canvas.drawLineBatched(prev_pos, {x, y}, thickness, color, GL_DYNAMIC_DRAW);
+        canvas.drawLineBatched(prev_pos, {x, y}, thickness, color, DrawType::Dynamic);
         prev_pos = {x, y};
     }
     utils::Vector2f left_eye_pos1 = pos + utils::Vector2f{-radius * 0.2, radius * 0.4};
     utils::Vector2f left_eye_pos2 = pos + utils::Vector2f{-radius * 0.6, radius * 0.5};
     utils::Vector2f right_eye_pos1 = pos + utils::Vector2f{+radius * 0.2, radius * 0.4};
     utils::Vector2f right_eye_pos2 = pos + utils::Vector2f{+radius * 0.6, radius * 0.5};
-    eye_canvas.drawLineBatched(left_eye_pos1, left_eye_pos2, thickness / 2.f, eye_color, GL_DYNAMIC_DRAW);
-    eye_canvas.drawLineBatched(right_eye_pos1, right_eye_pos2, thickness / 2.f, eye_color, GL_DYNAMIC_DRAW);
-    // canvas.drawCricleBatched(, 1.0, color, GL_DYNAMIC_DRAW);
+
+    // Sprite2 s();
+    // canvas.drawCricleBatched(, 1.0, color, DrawType::Dynamic);
 }
 
-PlayerEntity::PlayerEntity(GameWorld *world, TextureHolder &textures)
-    : GameObject(world, textures, ObjectType::Player),
-      m_vision(world->getTriangulation()),
-      m_vision_verts(world->m_shaders.get("VisionLight2"))
+PlayerEntity::PlayerEntity(TextureHolder &textures)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Player),
+      m_vision(m_world->getTriangulation()),
+      m_vision_verts(m_world->m_shaders.get("VisionLight2"))
 {
     m_collision_shape = std::make_unique<Polygon>(4);
     setSize({20.f, 20.f});
+}
+
+void PlayerEntity::doScript()
+{
 }
 
 void PlayerEntity::setMaxSpeed(float max_speed)
@@ -97,6 +101,13 @@ void PlayerEntity::update(float dt)
     utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
     m_vision.contrstuctField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
 
+    // if(m_disabilities.count())
+
+    if (m_combat_state != CombatState::None)
+    {
+        m_vel *= 0.f;
+    }
+
     truncate(m_vel, m_max_speed);
 }
 
@@ -106,14 +117,28 @@ void PlayerEntity::onCreation()
 void PlayerEntity::onDestruction() {}
 void PlayerEntity::draw(LayersHolder &layers)
 {
+    try
+    {
+        auto lua = LuaWrapper::getSingleton();
+        auto drawer = luabridge::getGlobal(lua->m_lua_state, "DrawPlayer");
+        if (drawer.isFunction())
+        {
+            drawer(this, layers);
+        }
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERROR IN: " << e.what() << " in file player.lua" << "\n";
+    }
 
-    drawAgent(m_pos, m_size.x, layers, {0, 0, 25, 1});
+    // drawAgent(m_pos, m_size.x, layers, {0, 0, 25, 1});
 
     auto &light_canvas = layers.getCanvas("Light");
     auto &shader = light_canvas.getShader("VisionLight");
     shader.use();
     shader.setUniform2("u_posx", m_pos.x);
     shader.setUniform2("u_posy", m_pos.y);
+    shader.setUniform2("u_max_radius", m_vision_radius);
     m_vision.getDrawVertices(shader, m_vision_verts, {1, 1, 1, 1}, m_vision_radius);
     for (int vert_ind = 0; vert_ind < m_vision_verts.size(); ++vert_ind)
     {
@@ -122,7 +147,8 @@ void PlayerEntity::draw(LayersHolder &layers)
         m_vision_verts[vert_ind].tex_coord = {dr};     //! we use this information in a shader
         m_vision_verts[vert_ind].color = {1, 1, 1, 1}; //! we use this information in a shader
     }
-    light_canvas.drawVertices(m_vision_verts, GL_DYNAMIC_DRAW);
+    m_vision_verts.m_shader2.setUniform2("u_max_radius", m_vision_radius);
+    light_canvas.drawVertices(m_vision_verts, DrawType::Dynamic);
 
     // light_canvas.drawCricleBatched(m_pos + m_vel*2.f, 50.f, Color{100,0,1,1.0});
 }
@@ -397,6 +423,7 @@ void Projectile::readDataFromScript()
 
         m_bolt_canvas_name = getVariable<std::string>(lua->m_lua_state, "BoltCanvas");
         m_tail_canvas_name = getVariable<std::string>(lua->m_lua_state, "TailCanvas");
+        m_max_vel = getVariable<float>(lua->m_lua_state, "BoltSpeed");
     }
 
     auto spawner = luabridge::getGlobal(lua->m_lua_state, "Spawner");
@@ -440,7 +467,7 @@ void Projectile::readDataFromScript()
             [](Particle &p)
             {
                 p.scale += utils::Vector2f{0.05f, 0.05f};
-                p.pos += p.vel;
+                p.pos += p.vel * 0.016f;
             });
     }
 
@@ -510,7 +537,7 @@ void Projectile::draw(LayersHolder &layers)
         bolt_sprite.setScale(m_size);
         if (p_bolt_canvas)
         {
-            p_bolt_canvas->drawSprite(bolt_sprite, m_shader_name, GL_DYNAMIC_DRAW);
+            p_bolt_canvas->drawSprite(bolt_sprite, m_shader_name, DrawType::Dynamic);
         }
     }
 }
@@ -550,9 +577,9 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
     : m_collision_system(&collider), m_pf(&pf), m_player(player), GameObject(&GameWorld::getWorld(), textures, ObjectType::Enemy)
 {
     m_collision_shape = std::make_unique<Polygon>(4);
-    setSize({20.f, 20.f});
+    setSize({10.f, 10.f});
     // m_target_pos = player->getPosition();
-    m_pathfinding_cd = (rand() % 200) + 100;
+    m_pathfinding_cd = (rand() % 20) + 120;
 }
 
 Enemy::~Enemy() {}
@@ -561,26 +588,29 @@ void Enemy::doScript()
 {
     auto lua = LuaWrapper::getSingleton();
 
-    if (LuaWrapper::loadScript("collisions.lua") != LuaScriptStatus::Ok)
+    if (LuaWrapper::loadScript("collisions.lua") == LuaScriptStatus::Broken)
     {
         return;
     }
-    if (LuaWrapper::loadScript("basicai.lua") != LuaScriptStatus::Ok)
+    auto ai_script_status = LuaWrapper::loadScript("basicai.lua");
+    if (ai_script_status == LuaScriptStatus::Broken)
     {
         return;
     }
-
-    luabridge::LuaRef processFunc = luabridge::getGlobal(lua->m_lua_state, "updateAI");
-    if (processFunc.isFunction())
+    luabridge::LuaRef update_func = luabridge::getGlobal(lua->m_lua_state, "updateAI");
+    if (update_func.isFunction())
     {
-        try
+        m_ai_updater = [update_func, this]()
         {
-            processFunc(static_cast<Enemy *>(this));
-        }
-        catch (std::exception &e)
-        {
-            std::cout << "ERROR IN updateAI" << e.what() << " !\n";
-        }
+            try
+            {
+                update_func(this);
+            }
+            catch (std::exception &e)
+            {
+                std::cout << "ERROR IN updateAI" << e.what() << " !\n";
+            }
+        };
     }
 }
 
@@ -588,6 +618,10 @@ void Enemy::update(float dt)
 {
 
     doScript();
+    if (m_ai_updater)
+    {
+        m_ai_updater();
+    }
 
     if (m_target)
     {
@@ -599,7 +633,7 @@ void Enemy::update(float dt)
         m_target_pos = m_target->getPosition();
     }
 
-    if (m_pf && m_target_pos.x > 0 && m_target_pos.y > 0)
+    if (m_pf)
     {
         if (m_pathfinding_timer++ >= m_pathfinding_cd)
         {
@@ -731,7 +765,7 @@ void Enemy::draw(LayersHolder &layers)
     try
     {
         auto lua = LuaWrapper::getSingleton();
-        auto drawer = luabridge::getGlobal(lua->m_lua_state, "Draw");
+        auto drawer = luabridge::getGlobal(lua->m_lua_state, "DrawEnemy");
         if (drawer.isFunction())
         {
             drawer(this, layers);
@@ -741,20 +775,6 @@ void Enemy::draw(LayersHolder &layers)
     {
         std::cout << "ERROR IN EnemyDraw: " << e.what() << "\n";
     }
-
-    // if (m_state == AIState::Patroling)
-    // {
-    // drawAgent(m_pos, m_size.x, layers, {0, 1, 0, 1}, {0, 2, 0, 1});
-    // }
-    // else if (m_state == AIState::Chasing)
-    // {
-    //     drawAgent(m_pos, m_size.x, layers, {1, 1, 0, 1}, {2, 4, 0, 1});
-    // }
-    // else if (m_state == AIState::Attacking)
-    // {
-    //     drawAgent(m_pos, m_size.x, layers, {1, 0, 0, 1}, {20, 0, 0, 1});
-    // }
-    // layers.getCanvas("Unit").drawLineBatched(m_pos, m_target_pos, 0.5, {0, 1, 0, 1});
 }
 
 void Enemy::avoidMeteors()
@@ -903,7 +923,7 @@ void OrbitingShield::draw(LayersHolder &layers)
     rect.setRotation(dir2angle(m_vel));
     rect.setScale(m_size);
 
-    unit_canvas.drawSprite(rect, m_shader_name, GL_DYNAMIC_DRAW);
+    unit_canvas.drawSprite(rect, m_shader_name, DrawType::Dynamic);
 
     m_particles->setSpawnPos(m_pos);
     m_particles->update(0.01f);
@@ -947,7 +967,7 @@ void Shield::draw(LayersHolder &layers)
     rect.setRotation(dir2angle(m_vel));
     rect.setScale(m_size * 2.f);
 
-    unit_canvas.drawSprite(rect, "basicshield", GL_DYNAMIC_DRAW);
+    unit_canvas.drawSprite(rect, "basicshield", DrawType::Dynamic);
 }
 
 void OrbitingShield::readDataFromScript()

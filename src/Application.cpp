@@ -74,7 +74,7 @@ void setUniforms(Shader &program, ShaderUniform<UniformType> &...values)
 void drawProgramToTexture(Sprite2 &rect, Renderer &target, std::string program)
 {
     target.clear({1, 1, 1, 1});
-    target.drawSprite(rect, program, GL_DYNAMIC_DRAW);
+    target.drawSprite(rect, program, DrawType::Dynamic);
     target.drawAll();
 }
 
@@ -121,7 +121,7 @@ void Application::initializeLayers()
     options.wrap_x = TexWrapParam::ClampEdge;
     options.wrap_y = TexWrapParam::ClampEdge;
 
-    TextureOptions text_options; 
+    TextureOptions text_options;
     text_options.data_type = TextureDataTypes::UByte;
     text_options.format = TextureFormat::RGBA;
     text_options.internal_format = TextureFormat::RGBA;
@@ -165,25 +165,25 @@ Application::Application(int width, int height) : m_window(width, height),
     initializeLayers();
 
     m_font = std::make_shared<Font>("arial.ttf");
-    
-    m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y}, utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
+
+    m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y},
+                                              utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
-    for (int i = 0; i < 50; ++i)
+    for (int i = 0; i < 69; ++i)
     {
-        auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
+        auto rand_pos = randomPosInBox({5, 5}, {0.95 * MAP_SIZE_X, 0.95 * MAP_SIZE_Y});
         auto map_cell = m_map->coordToCell(rand_pos);
-        int rx = 1 + rand() % 4;
-        int ry = 1 + rand() % 4;
+        int rx = 2 + rand() % 4;
+        int ry = 2 + rand() % 4;
         m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {rx, ry});
     }
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
 
-    p_player = world.addObject(ObjectType::Player, "Player");
+    p_player = world.addObject<PlayerEntity>("Player");
     p_player->setPosition({500, 500});
-    // world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
-
-    world.update(0); //! force insert player to world
+    p_player->setAngle(90);
+    world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
 
     for (int i = 0; i < 0; ++i)
     {
@@ -207,6 +207,7 @@ Application::Application(int width, int height) : m_window(width, height),
         std::string shader_name = filename.substr(0, pos_right);
         // m_window_renderer.addShader(shader_name, "../Resources/basicinstanced.vert",  "../Resources/" + filename);
     }
+    m_window_renderer.addShader("circle", "../Resources/basicinstanced.vert", "../Resources/circle.frag");
     m_window_renderer.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
     m_window_renderer.addShader("Water", "../Resources/basictex.vert", "../Resources/test.frag");
     m_window_renderer.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
@@ -305,13 +306,19 @@ void Application::onKeyPress(SDL_Keycode key)
     switch (key)
     {
     case SDLK_a:
-        m_is_moving_left = true;
+        m_is_turning_left = true;
+        break;
+    case SDLK_e:
+        m_is_moving_right = true;
         break;
     case SDLK_d:
-        m_is_moving_right = true;
+        m_is_turning_right = true;
         break;
     case SDLK_w:
         m_is_moving_up = true;
+        break;
+    case SDLK_q:
+        m_is_moving_left = true;
         break;
     case SDLK_s:
         m_is_moving_down = true;
@@ -358,6 +365,12 @@ void Application::onMouseButtonPress(SDL_MouseButtonEvent event)
             m_is_selecting = true;
         }
     }
+    else if (event.button == SDL_BUTTON_RIGHT)
+    {
+        m_old_player_dir = m_window_renderer.getMouseInWorld() - p_player->getPosition();
+        m_old_angle = p_player->getAngle();
+        m_is_turning = true;
+    }
 }
 void Application::onWindowResize(SDL_WindowEvent event)
 {
@@ -375,7 +388,7 @@ void Application::selectInWorld(const utils::Vector2f &left_select, const utils:
     auto selected_enemies = world.getCollider().findNearestObjects(ObjectType::Enemy, selection_rect);
     if (!selected_enemies.empty())
     {
-        p_player->setTarget(static_cast<Enemy *>(selected_enemies[0]));
+        p_player->target_enemy = static_cast<Enemy *>(selected_enemies[0]);
     }
 }
 
@@ -391,6 +404,10 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     {
         selectInWorld(m_selection_click_pos, m_window_renderer.getMouseInWorld());
         m_is_selecting = false;
+    }
+    else if (event.button == SDL_BUTTON_RIGHT)
+    {
+        m_is_turning = false;
     }
     if (isKeyPressed(SDL_SCANCODE_LCTRL) && event.button == SDL_BUTTON_RIGHT)
     {
@@ -413,6 +430,21 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
             static_cast<Water &>(*water).readFromMap(cdt, connected_inds);
         }
     }
+
+    auto lua = LuaWrapper::getSingleton();
+    auto script_status = LuaWrapper::loadScript("UI/onAction.lua");
+    if (script_status != LuaScriptStatus::Broken)
+    {
+        try
+        {
+            auto ability = luabridge::getGlobal(lua->m_lua_state, "DoAbility");
+            ability(mouse_pos, utils::Vector2f{0, 0});
+        }
+        catch (std::exception &e)
+        {
+            std::cout << "... " << e.what() << "\n";
+        }
+    }
 }
 
 void Application::onKeyRelease(SDL_Keycode key)
@@ -422,13 +454,19 @@ void Application::onKeyRelease(SDL_Keycode key)
     switch (key)
     {
     case SDLK_a:
-        m_is_moving_left = false;
+        m_is_turning_left = false;
+        break;
+    case SDLK_e:
+        m_is_moving_right = false;
         break;
     case SDLK_d:
-        m_is_moving_right = false;
+        m_is_turning_right = false;
         break;
     case SDLK_w:
         m_is_moving_up = false;
+        break;
+    case SDLK_q:
+        m_is_moving_left = false;
         break;
     case SDLK_s:
         m_is_moving_down = false;
@@ -459,18 +497,32 @@ struct Spell
 void Application::fireProjectile(ProjectileTarget target, utils::Vector2f from)
 {
     auto &world = GameWorld::getWorld();
-    if (p_player->m_target)
+
+    // auto status = LuaWrapper::loadScript("onAction.lua");
+    // if(status != LuaScriptStatus::Broken)
+    // {
+    //     p_player->m_combat_state = CombatState::Casting;
+    //     p_player->m_cast_time = 0.f;
+    // }
+    // else
+    // {
+    //     return;
+    // }
+
+    if (p_player->target_enemy)
     {
-        if (p_player->m_target->isDead())
+        if (p_player->target_enemy->isDead())
         {
-            p_player->m_target = nullptr;
+            p_player->target_enemy = nullptr;
+            p_player->setTarget(nullptr);
             return;
         }
         auto &projectile = static_cast<Projectile &>(*world.addObject(ObjectType::Bullet, "Projectile"));
         projectile.setScriptName("frostbolt");
         projectile.setPosition(from);
         projectile.setSize(10.f);
-        projectile.setTarget(p_player->m_target);
+        projectile.setTarget(p_player->target_enemy);
+        p_player->setTarget(p_player->target_enemy);
     }
 }
 
@@ -501,6 +553,7 @@ void Application::moveView(utils::Vector2f dr, Renderer &target)
     // view.setSize(m_default_view.getScale() * (1 + booster_ratio / 3.f));
 
     auto threshold = view.getScale() / 2.f - view.getScale() / 3.f;
+    threshold *= 0.f;
     auto dx = player->getPosition().x - view.getCenter().x;
     auto dy = player->getPosition().y - view.getCenter().y;
     auto view_max = view.getCenter() + view.getScale() / 2.f;
@@ -552,8 +605,24 @@ void Application::update(float dt = 0.016f)
     auto p_player = world.get<PlayerEntity>("Player");
     if (p_player)
     {
-        p_player->m_vel.x = 30.f * ((int)m_is_moving_right - (int)m_is_moving_left);
-        p_player->m_vel.y = 30.f * ((int)m_is_moving_up - (int)m_is_moving_down);
+
+        auto dir = utils::angle2dir(p_player->getAngle());
+        auto vel = p_player->getMaxSpeed() * dir;
+        // p_player->m_vel = p_player->getMaxSpeed() * ((int)m_is_moving_right - (int)m_is_moving_left);
+        p_player->m_vel = vel * ((int)m_is_moving_up - (int)m_is_moving_down);
+        if (m_is_moving_left || m_is_moving_right)
+        {
+            utils::Vector2f n_dir = {dir.y, -dir.x};
+            p_player->m_vel += n_dir * p_player->getMaxSpeed() * ((int)m_is_moving_right - (int)m_is_moving_left);
+        }
+        if (m_is_turning_right)
+        {
+            p_player->setAngle(p_player->getAngle() - 5);
+        }
+        if (m_is_turning_left)
+        {
+            p_player->setAngle(p_player->getAngle() + 5);
+        }
         int a = m_is_moving_down + m_is_moving_left + m_is_moving_up + m_is_moving_right;
         if (a >= 2)
         {
@@ -563,9 +632,29 @@ void Application::update(float dt = 0.016f)
         {
             p_player->m_vel *= 3.f;
         }
+        if (m_is_turning)
+        {
+            auto mouse_pos = m_window_renderer.getMouseInWorld();
+            auto dr_new = mouse_pos - p_player->getPosition();
+            auto dr_prev = m_old_player_dir;
+            dr_new /= norm(dr_new);
+            dr_prev /= norm(dr_prev);
+            auto new_dir = utils::angle2dir(m_old_angle);
+            if (!utils::approx_equal_zero(norm(dr_new - dr_prev)))
+            {
+                auto delta_vec = 0.5 * (dr_new - dr_prev) / norm(dr_new - dr_prev);
+                new_dir += delta_vec;
+                // m_turning_pivot += delta_vec;
+            }
+            else
+            {
+            }
+            float new_angle = dir2angle(dr_new);
+            p_player->setAngle(new_angle);
+        }
     }
-    world.update(0.1f);
-    m_time += 0.1f;
+    world.update(dt);
+    m_time += dt;
     //! set time in shaders
     Shader::m_time = m_time;
 
@@ -591,7 +680,7 @@ void Application::update(float dt = 0.016f)
     background.setScale(map_size / 2.f);
     auto old_view = m_scene_canvas.m_view;
     m_scene_canvas.m_view = m_window_renderer.m_view;
-    m_scene_canvas.drawSprite(background, "Instanced", GL_DYNAMIC_DRAW);
+    m_scene_canvas.drawSprite(background, "Instanced", DrawType::Dynamic);
     m_scene_canvas.drawAll();
     m_scene_canvas.m_view = old_view;
     m_layers.draw(m_scene_canvas, m_window_renderer.m_view);
@@ -606,37 +695,61 @@ void Application::update(float dt = 0.016f)
     screen_sprite.setScale(scene_size / 2.f);
     m_window_renderer.m_view.setCenter(screen_sprite.getPosition());
     m_window_renderer.m_view.setSize(scene_size);
-    m_window_renderer.drawSprite(screen_sprite, "LastPass", GL_DYNAMIC_DRAW);
+    m_window_renderer.drawSprite(screen_sprite, "LastPass", DrawType::Dynamic);
     auto old_factors = m_window_renderer.m_blend_factors;
     m_window_renderer.m_blend_factors = {BlendFactor::One, BlendFactor::OneMinusSrcAlpha};
     m_window_renderer.drawAll();
     m_window_renderer.m_blend_factors = old_factors;
     m_window_renderer.m_view = old_view;
 
+    drawUI(dt);
+}
+
+void Application::drawUI(float dt)
+{
+
+    auto old_view = m_window_renderer.m_view;
+
     Text text;
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
     m_window_renderer.m_view.setSize(m_window.getSize());
     text.setPosition(100, 0);
     text.setScale(1, 1);
-    text.setFont(m_font);
+    text.setFont(m_font.get());
     text.setColor({255, 255, 255, 255});
     std::string text_test = "Frame time: ... " + std::to_string(m_avg_frame_time.avg);
     text.setText(text_test);
-    m_window_renderer.drawText(text, "Text", GL_DYNAMIC_DRAW);
+    m_window_renderer.drawText(text, "Text", DrawType::Dynamic);
 
     Sprite2 health_bar(*m_textures.get("bomb"));
     health_bar.m_texture_handles[0] = 0;
 
-    float x_scale = p_player->m_health / (double)p_player->m_max_health;
-    utils::Vector2f window_size = m_window.getSize();
-    health_bar.setPosition(0.2 * window_size.x, 0.95 * window_size.y);
-    health_bar.setScale(100, 15);
-    m_window_renderer.drawSprite(health_bar, "healthBar", GL_DYNAMIC_DRAW);
-    m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] = x_scale;
+    // float x_scale = p_player->m_health / (double)p_player->m_max_health;
+    // utils::Vector2f window_size = m_window.getSize();
+    // health_bar.setPosition(0.2 * window_size.x, 0.95 * window_size.y);
+    // health_bar.setScale(100, 15);
+    // m_window_renderer.drawSprite(health_bar, "healthBar", DrawType::Dynamic);
+    // m_window_renderer.getShader("healthBar").getVariables().uniforms["u_health_percentage"] = x_scale;
+    // m_window_renderer.drawAll();
+
+    //! run lua script for UI
+    if (LuaWrapper::loadScript("UI/playerUI.lua") != LuaScriptStatus::Broken)
+    {
+        auto drawer = luabridge::getGlobal(LuaWrapper::getSingleton()->m_lua_state, "DrawUI");
+        if (drawer.isFunction())
+        {
+            try
+            {
+                drawer(p_player.get(), &m_window_renderer, &m_layers);
+            }
+            catch (std::exception &e)
+            {
+                std::cout << "ERROR IN DrawUI: " << e.what() << "\n";
+            }
+        }
+    }
     m_window_renderer.drawAll();
-
     m_window_renderer.m_view = old_view;
-
     m_ui->draw(m_window);
 }
 
@@ -649,7 +762,7 @@ void inline gameLoop(void *mainLoopArg)
     // auto tic = std::chrono::high_resolution_clock::now();
     Application *p_app = (Application *)mainLoopArg;
 
-    p_app->update(0);
+    p_app->update(0.01666666);
     p_app->handleInput();
 
     // Swap front/back framebuffers
