@@ -1,6 +1,6 @@
 
 
-FireBoltAbility = { spell_id = 1, cooldown = 5, timer = 0, name = "firebolt"}
+FireBoltAbility = { spell_id = 1, cooldown = 5, cast_time = 2.,timer = 0, name = "firebolt"}
 
 FireBoltAbility.onUse = function (performer, target)
 

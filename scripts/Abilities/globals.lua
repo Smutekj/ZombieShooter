@@ -3,9 +3,10 @@ GlobalCooldowns = {}  -- we store GlobalCooldowns of all entities here
 
 AbilityCooldowns = {} -- we store cooldowns of all abilities here
 Entity2Abilities = {} -- we store here ids ofof abilities each entity has available (like a spellbook)
+Entity2Draw = {}
+Entity2SelectedAbility = {}
 
-local Ability = { id = 0, cooldown = 1, timer = 0, name = "DefaultAbility" }
-
+local Ability = { id = 0, cooldown = 1, cast_time = 0., timer = 0, name = "DefaultAbility" }
 
 EnemyData = {
 
@@ -14,8 +15,8 @@ EnemyData = {
 
 -- initialize spell books
 local f, error = loadfile( "../scripts/Entities/player.lua")
-local f2, error2 = loadfile( "../scripts/Entities/enemy1.lua")
 if f then f() else print(error) end
+local f2, error2 = loadfile( "../scripts/Entities/enemy1.lua")
 if f2 then f2()  else print(error2) end
 
 local f, error = loadfile( "../scripts/Abilities/basicattack.lua")
