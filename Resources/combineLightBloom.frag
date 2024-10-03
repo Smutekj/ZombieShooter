@@ -24,7 +24,7 @@ void main(void)
 
     vec3 hdr_color = source_color + bloom_color;             // additive blending
     vec3 result = vec3(1.0) - exp(-hdr_color * exposure);    // tone mapping
-    result = pow(result, vec3(1.0 / gamma));                // also gamma correct while we're at it       
+    result = pow(result, vec3(1.0 / gamma));                // gamme correction      
 
     FragColor = vec4(result, bloom_alpha);
 }

@@ -41,6 +41,7 @@ void main()
         FragColor = vec4(u_color_edge,  1.0);
     }    
     else{
-        FragColor = vec4(1.0 - v_tex_coord.x, alpha*v_tex_coord.x,  0., alpha);
+        // FragColor = vec4(1.0 - v_tex_coord.x, alpha*v_tex_coord.x,  0., 0.);
+        FragColor = vec4(vec3(1.0 - v_tex_coord.x, alpha*v_tex_coord.x,  0.)*0., 0.);
     }       
 }                                   
