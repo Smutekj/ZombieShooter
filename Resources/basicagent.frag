@@ -12,7 +12,7 @@ uniform float u_time;
 
 uniform vec2 u_shape_vec = vec2(1.,1.);
 uniform vec3 u_color = vec3(5.,0.5,0.);
-uniform vec3 u_color_edge = vec3(0.,0.5,12.);
+uniform vec3 u_color_edge = vec3(0.,5.,120.);
 
 uniform sampler2D u_texture;
 
@@ -29,7 +29,7 @@ float capsuleSDF( vec3 p, vec3 a, vec3 b, float r ) {
 
 
 void main()                                  
-{            
+{        
     float a = 0.05;
     vec2 scale = vec2(u_shape_vec.x +a*sin(u_time*u_time_multiplier),
                      u_shape_vec.y - a*sin(u_time*u_time_multiplier));
@@ -47,6 +47,6 @@ void main()
     float left_eye = 1.0 - smoothstep(0.05, 0.075, left_eye_sdf);
     float right_eye = 1.0 - smoothstep(0.05, 0.075, right_eye_sdf);
 
-    vec3 result = u_color_edge *shape_factor + u_color*(right_eye + left_eye);
+    vec3 result = u_color_edge *shape_factor + 0.*u_color*(right_eye + left_eye);
     FragColor = vec4(result, clamp(shape_factor + right_eye + left_eye, 0., 1.));
 }                                          
