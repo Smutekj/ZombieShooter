@@ -19,6 +19,9 @@ FireBoltAbility.onUse = function (performer, target)
     p.owner = performer.id;
     p.vel.x = target.x - performer.x;
     p.vel.y = target.y - performer.y;
+    p.scale = Vec(25, 25);
+    -- setScale("Firebolt" .. tostring(performer.id), Vec(20., 20.));
+    -- setScale("Bullet", 100., 100.);
     p.target = target
     performer.vel.x = 0;
     performer.vel.y = 0;

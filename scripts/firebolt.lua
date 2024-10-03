@@ -11,7 +11,7 @@ TailShader = ""
 BoltShader = "fireBolt"
 
 TailCanvas = "Wall";
-BoltCanvas = "Fire";
+BoltCanvas = "Wall";
 
 ParticleColors = {
     Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},
@@ -19,12 +19,12 @@ ParticleColors = {
 }
 
 BoltColor = {r = 20.,g = 0.2,b = 0.,a = 1.}
-BoltSpeed = 250.;
+BoltSpeed = 100.;
 
 function Updater(particle)
     particle.pos = particle.pos + particle.vel;
     p.scale.x = p.scale.x - 0.2;
-    p.scale.y = p.scale.y -0.2;
+    p.scale.y = p.scale.y - 0.2;
     p.angle = p.angle + 10;
     return particle;
 end

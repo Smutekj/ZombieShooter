@@ -2,7 +2,7 @@ PATROLING = 0
 CHASING = 1
 ATTACKING = 2
 
-local attack_range = 100
+local attack_range = 300
 local vision_range = 500
 
 local function randVec()
@@ -110,7 +110,6 @@ local function onPatrol(enemy)
     local player = getObject("Player");
     -- print(dist(player.pos, enemy.pos))
     if inRange(enemy, player, vision_range) then
-        print("Penis2")
         enemy.state = CHASING
         enemy.target = player;
         return;
@@ -144,7 +143,6 @@ function updateAI(enemy) --object is the c++ passed function
     end
     -- print("ID: " .. enemy.id .. " pos: " .. enemy.pos.x .. " " .. enemy.pos.y)
     Time = Time + 1;
-    print(enemy.id)
     enemy.max_acc = 1000.;
     -- print("Enemy with ID: " .. enemy.id .. " is: " .. AIStates[enemy.state + 1])
     updateFSM(enemy);

@@ -1,6 +1,6 @@
 
 
-for i =1,300 do
+for i =1,50 do
     local name = "E" .. tostring(i);
     local enemy = createEnemy(name);
     local new_pos = Vec(2500, 2500) + randVec(math.random()*2500.);

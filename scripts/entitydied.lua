@@ -12,6 +12,14 @@ function dump(o)
 end
 
 function OnEntityDead(entity)
+
+   local player = getPlayer("Player");
+   
+   local target = player.target_enemy;
+   if target.id == entity.id then
+      player.target_enemy = nil;
+      print("FUCK YOU222")
+   end
    -- for id, quest in pairs(Quests) do
       
    --    local x = quest.logic(entity);
@@ -28,5 +36,6 @@ function OnEnemyCreation(enemy, enemy_type)
    GlobalCooldowns[enemy.id] = 1.;
    ChaseTimers[enemy.id] = 0.;
 
+   Entity2SelectedAbility[enemy.id] = 0;
    EnemyData[enemy_type].initialize(enemy);
 end

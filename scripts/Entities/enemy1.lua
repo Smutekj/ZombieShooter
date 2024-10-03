@@ -36,30 +36,30 @@ local function drawHealthBar(enemy, canvas)
     local texture = getTexture("coin");
     local health_bar = Sprite();
     health_bar.setTexture(health_bar, 0, texture);
-    health_bar.pos = Vec(0.1 * size.x, 0.9 * size.y);
-    health_bar.scale = Vec(100., 25.);
+    health_bar.pos = enemy.pos + Vec(0., 50.);
+    health_bar.scale = Vec(50., 8.);
     canvas.drawSprite(canvas, health_bar, "healthBar"); -- DO NOT CHANGE ORDER OF THESE!
 
-    local x_scale = player.health / player.max_health;
+    local x_scale = enemy.health / enemy.max_health;
     local resources_info = Sprite();
     resources_info.setTexture(resources_info, 0, texture);
-    resources_info.pos = Vec(0.1 * size.x - 195. * (1. - x_scale) / 2., 0.9 * size.y);
-    resources_info.scale = Vec(195. * x_scale, 45.);
-    canvas.drawRectangle(canvas, resources_info, "default", Color(0., 1., 0., 1.));
-
-    local health_text = Text(tostring(player.health) .. " / " .. tostring(player.max_health));
-    local font = getFont();
-    health_text.setFont(health_text, font);
-    health_text.pos = Vec(health_bar.pos.x - 50 - 30, health_bar.pos.y - 12.5);
-    health_text.scale = Vec(1, 1);
-    canvas.render(canvas);
-    canvas.drawText(canvas, health_text, "Text")
+    resources_info.pos = health_bar.pos + Vec(-50.*(1. - x_scale),  0.);
+    resources_info.scale = Vec(100. * x_scale, 15.5);
+    canvas.drawRectangle(canvas, resources_info, "default", Color(1. - x_scale, x_scale, 0., 1.));
 end
+    -- local health_text = Text(tostring(player.health) .. " / " .. tostring(player.max_health));
+    -- local font = getFont();
+    -- health_text.setFont(health_text, font);
+    -- health_text.pos = enemy.pos + Vec(health_bar.pos.x - 50 - 30, health_bar.pos.y - 12.5);
+    -- health_text.scale = Vec(1, 1);
+    -- canvas.render(canvas);
+    -- canvas.drawText(canvas, health_text, "Text")
 
 function DrawEnemy(enemy, layers) --object is the c++ passed function
     if not layers.isActive(layers, "Light") then
         layers.toggleActivate(layers, "Light");
     end
+    drawHealthBar(enemy, layers.getCanvas(layers, "UI"));
 
     local player = getObject("Player");
     local c = Color(1, 0, 0, 1);

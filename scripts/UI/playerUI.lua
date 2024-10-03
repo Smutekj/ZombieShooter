@@ -80,17 +80,26 @@ local function drawEnemyBar(enemy, canvas, layers)
 
 end
 
+TargetID = -1;
+
 function DrawUI(player, canvas, layers)
     drawHealthBar(player, canvas);
     drawCastBar(player, canvas);
-    if (player.target_enemy) then
+    
+    local target = player.target_enemy;
+    if not (target == nil) and not (target == 0) then        
+        TargetID = target.id;
         drawTarget(player, player.target_enemy, canvas);
-    end
+    end 
+    -- print(TargetID, "HI")
+
+    -- if (not target == 0) then
+    -- end
     player.vision_radius = 900.;
 
-    local enemies = findEnemies(player.pos, 500.);
-    local n_enemies = enemies.size(enemies);
-    for i = 0,n_enemies-1 do
+    -- local enemies = findEnemies(player.pos, 500.);
+    -- local n_enemies = enemies.size(enemies);
+    -- for i = 0,n_enemies-1 do
         -- print(enemies:at(i));
-    end
+    -- end
 end
