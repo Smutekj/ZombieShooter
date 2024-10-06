@@ -28,9 +28,13 @@ public:
 
     bool isVisible(cdt::Vector2f query) const;
 
-    void contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir);
+    void constructField(cdt::Vector2f from, cdt::Vector2f look_dir);
 
     void getDrawVertices(Shader &shader, VertexArray& verts,  Color color = {1,1,1,1}, float max_radius = 30.f) const;
+
+    void onTriangulationChange();
+
+    void toggleVisibility(int tri_ind, int ind_in_tri);
 
 private:
     cdt::Vector2f m_center;
@@ -39,5 +43,9 @@ private:
     float m_max_angle = +60;
 
     std::vector<VisionCone> m_vision;
+    
+    std::unordered_map<int, bool> m_edgeid2transparent;
+
+    std::vector<std::array<bool, 3>> m_tri2edge2transparent;
     cdt::Triangulation<cdt::Vector2i> &m_cdt;
 };

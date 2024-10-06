@@ -38,8 +38,50 @@ bool VisionField::isVisible(cdt::Vector2f query) const
     return false;
 }
 
-void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
+void VisionField::toggleVisibility(int tri_ind, int ind_in_tri)
 {
+    assert(ind_in_tri < 3 && ind_in_tri >= 0);
+    
+    auto visibility = m_tri2edge2transparent.at(tri_ind).at(ind_in_tri);
+    m_tri2edge2transparent.at(tri_ind).at(ind_in_tri) = !visibility;
+    auto &tri = m_cdt.m_triangles.at(tri_ind);
+
+    auto next_tri_ind = tri.neighbours[ind_in_tri];
+    auto next_tri_ind2 = tri.neighbours[cdt::next(ind_in_tri)];
+    auto next_tri_ind3 = tri.neighbours[cdt::prev(ind_in_tri)];
+
+    auto &next_tri = m_cdt.m_triangles.at(next_tri_ind);
+    auto next_ind_in_tri = cdt::indInTriOf(next_tri, tri_ind);
+    m_tri2edge2transparent.at(next_tri_ind).at(next_ind_in_tri) = !visibility;
+
+    
+}
+
+void VisionField::onTriangulationChange()
+{
+
+    auto &triangles = m_cdt.m_triangles;
+    auto n_triangles = triangles.size();
+    m_tri2edge2transparent.resize(n_triangles);
+
+    // for (int tri_ind = 0; tri_ind < n_triangles; ++tri_ind)
+    // {
+    //     m_tri2edge2transparent[tri_ind] = {true, true, true};
+    // }
+
+    for (int tri_ind = 0; tri_ind < n_triangles; ++tri_ind)
+    {
+        auto &tri = triangles.at(tri_ind);
+        for (int ind_in_tri = 0; ind_in_tri < 3; ++ind_in_tri)
+        {
+            m_tri2edge2transparent[tri_ind][ind_in_tri] = !tri.is_constrained[ind_in_tri];
+        }
+    }
+}
+
+void VisionField::constructField(cdt::Vector2f from, cdt::Vector2f look_dir)
+{
+
     using namespace cdt;
 
     auto left_limit = from + m_vision_dist * angle2dir(dir2angle(look_dir) + m_min_angle);
@@ -61,7 +103,7 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
 
     const auto &triangles = m_cdt.m_triangles;
     auto start_tri_ind = m_cdt.findTriangle(from, false);
-    if(start_tri_ind < 0 || start_tri_ind >= triangles.size())
+    if (start_tri_ind < 0 || start_tri_ind >= triangles.size())
     {
         return;
     }
@@ -103,7 +145,7 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
         //     }
         // }
 
-        if (!curr_tri.is_constrained[i])
+        if (m_tri2edge2transparent[start_tri_ind][i])
         {
             to_visit.push_back({start_tri_ind, curr_tri.neighbours[i], left, right});
         }
@@ -146,8 +188,8 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
         auto o_left = orient2(from, opposite_vert, left);
         auto o_right = orient2(from, right, opposite_vert);
 
-        bool left_is_transparent = !curr_tri.is_constrained[opposite_ind_in_tri];
-        bool right_is_transparent = !curr_tri.is_constrained[prev(opposite_ind_in_tri)];
+        bool left_is_transparent = m_tri2edge2transparent[curr_tri_ind][opposite_ind_in_tri];
+        bool right_is_transparent = m_tri2edge2transparent[curr_tri_ind][prev(opposite_ind_in_tri)];
         bool left_was_added = vequal(left_vert, left);
         bool right_was_added = vequal(right_vert, right);
 
@@ -252,7 +294,7 @@ void VisionField::contrstuctField(cdt::Vector2f from, cdt::Vector2f look_dir)
     }
 }
 
-void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color color, float max_radius) const
+void VisionField::getDrawVertices(Shader &shader, VertexArray &vertices, Color color, float max_radius) const
 {
     auto from = m_center;
     auto angle_dist_cond = [from](VisionCone &r1, VisionCone &r2)
@@ -277,7 +319,6 @@ void VisionField::getDrawVertices(Shader &shader, VertexArray& vertices, Color c
         }
         return min_alpha + (max_alpha - min_alpha) * (radius / max_radius);
     };
-
 
     Vertex center_vert;
     center_vert.pos = {from.x, from.y};
