@@ -1,4 +1,5 @@
-for i = 1, 5 do
+
+for i = 1, 5 do -- creates enemies at random position around the map
     local name = "E" .. tostring(i);
     local enemy = createEnemy(name);
     local new_pos = Vec(2500, 2500) + randVec(math.random() * 2500.);
