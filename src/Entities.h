@@ -5,6 +5,7 @@
 
 #include "AILuaComponent.h"
 #include "Shadows/VisibilityField.h"
+#include "Map.h"
 
 enum class Status
 {
@@ -20,8 +21,7 @@ enum class Status
 struct Statuses
 {
 
-    std::unordered_map<Status, float> m_status_timer; 
-
+    std::unordered_map<Status, float> m_status_timer;
 };
 
 enum class CombatState
@@ -29,7 +29,7 @@ enum class CombatState
     Casting,
     Attacking,
     Shooting,
-    None, // 
+    None, //
 };
 
 enum class DisabilityState
@@ -69,7 +69,6 @@ private:
     void doScript();
 
 public:
-
     float m_health = 200;
     float m_max_health = 200;
     float m_vision_radius = 300.f;
@@ -77,13 +76,13 @@ public:
     float m_cast_time = -1.f;
 
     CombatState m_combat_state = CombatState::None;
-    Enemy* target_enemy = nullptr;
+    Enemy *target_enemy = nullptr;
 
+    VisionField m_vision;
 
 private:
     std::unordered_set<DisabilityState> m_disabilities;
 
-    VisionField m_vision;
     VertexArray m_vision_verts;
 };
 class Event : public GameObject
@@ -101,41 +100,6 @@ public:
 
 public:
     std::string m_script_name;
-};
-
-class Wall : public GameObject
-{
-
-public:
-    Wall() = default;
-    explicit Wall(TextureHolder &textures, utils::Vector2f from, utils::Vector2f to);
-    virtual ~Wall() override {}
-
-    virtual void update(float dt) override;
-    virtual void onCreation() override;
-    virtual void onDestruction() override;
-    virtual void draw(LayersHolder &layers) override;
-    virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
-
-private:
-    utils::Vector2f getNorm()
-    {
-
-        auto points = m_collision_shape->getPointsInWorld();
-        assert(points.size() >= 2);
-        auto v0 = points.at(0);
-        auto v1 = points.at(1);
-        auto t = (v1 - v0);
-        t /= norm(t);
-        m_norm = utils::Vector2f{t.y, -t.x};
-        return m_norm;
-    }
-
-private:
-    utils::Vector2f m_norm = {0, 0};
-
-private:
-    Color m_color = {0, 1.f, 0, 1.f};
 };
 
 using ProjectileTarget = std::variant<GameObject *, utils::Vector2f>;
@@ -196,7 +160,7 @@ private:
 
 public:
     float max_vel = 100.f;
-    float max_acc = 150.f;
+    float max_acc = 550.f;
     float max_impulse_vel = 40.f;
 
     float m_health = 10;
@@ -204,6 +168,7 @@ public:
     utils::Vector2f m_impulse = {0, 0};
 
     utils::Vector2f m_next_path = {-1, -1};
+    utils::Vector2f m_next_next_path = {-1, -1};
     AIState m_state = AIState::Patroling;
 
     Color m_color = Color(20, 0, 0, 1);
@@ -214,6 +179,8 @@ public:
 
 private:
     std::function<void()> m_ai_updater;
+    std::function<bool(cdt::TriInd, cdt::TriInd)> m_path_rule = [](cdt::TriInd i1, cdt::TriInd i2)
+    { return true; };
 
     float m_boid_radius = 30.f;
     utils::Vector2f m_acc = {0, 0};
@@ -227,6 +194,11 @@ private:
     int m_pathfinding_timer = 0;
     int m_pathfinding_cd = 120;
     std::string m_script_name = "basicai.lua";
+
+
+    
+    SurfaceTable m_surfaces;
+    // std::array<bool, static_cast<int>(SurfaceType::Count)> m_surface_is_walkable;
 };
 
 template <class T>

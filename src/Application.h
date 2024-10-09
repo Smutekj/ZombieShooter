@@ -20,17 +20,17 @@
 #include <Font.h>
 
 #include "Shadows/VisibilityField.h"
-#include "MapGrid.h"
+#include "Map.h"
 #include "Entities.h"
 #include "GameWorld.h"
 #include "DrawLayer.h"
 #include "Enviroment.h"
 
+
+
 namespace cdt{
     template class Triangulation<utils::Vector2i>;
 }
-
-
 
 
 struct Averager
@@ -51,110 +51,6 @@ struct Averager
 
 void gameLoop(void *mainLoopArg);
 
-std::vector<int> inline findConnectedTriInds(cdt::Triangulation<cdt::Vector2i> &cdt, int start_tri_ind)
-{
-    std::vector<int> connected_inds;
-    auto &triangles = cdt.m_triangles;
-    auto n_triangles = triangles.size();
-    std::unordered_set<int> visited(n_triangles);
-    std::queue<int> to_visit;
-    to_visit.push(start_tri_ind);
-    while (!to_visit.empty())
-    {
-        auto curr = to_visit.front();
-        auto &curr_tri = triangles.at(curr);
-        to_visit.pop();
-        visited.insert(curr);
-        connected_inds.push_back(curr);
-        for (int i = 0; i < 3; ++i)
-        {
-            auto neighbour = curr_tri.neighbours[i];
-            if (!visited.contains(neighbour) && !curr_tri.is_constrained.at(i))
-            {
-                to_visit.push(neighbour);
-            }
-        }
-    }
-    return connected_inds;
-}
-
-enum class SurfaceType
-{
-    Water,
-    Lava,
-    Poison,
-    Gay
-};
-
-using RegionId = std::size_t;
-struct SurfaceData
-{
-    SurfaceType type;
-    RegionId region = 0;
-};
-
-class SurfaceManager
-{
-
-public:
-    bool readFromMap(MapGridDiagonal &map)
-    {
-        auto &world = GameWorld::getWorld();
-        std::string wall_name = "Wall0";
-        int i = 0;
-        while (world.kill(wall_name)) //! destroy all walls
-        {
-            i++;
-            wall_name = "Wall" + std::to_string(i);
-        }
-
-        auto edges = map.extractEdges();
-        
-        i = 0;
-        for (auto &e : edges)
-        {
-            auto v0 = utils::Vector2f{e.from.x, e.from.y};
-            auto v1 = utils::Vector2f{e.to().x, e.to().y};
-            wall_name = "Wall" + std::to_string(i);
-            auto obj = GameWorld::getWorld().addObject<Wall>(wall_name, v0, v1);
-            i++;
-        }
-        return true;
-    }
-
-    void ad(cdt::Triangulation<cdt::Vector2i> &cdt, utils::Vector2f pos)
-    {
-        m_tri2surface.resize(cdt.m_triangles.size());
-
-        auto tri_ind = cdt.findTriangle({pos.x, pos.y});
-        auto connected_inds = findConnectedTriInds(cdt, tri_ind);
-
-        auto region = m_tri2surface.at(tri_ind).region;
-        auto type = m_tri2surface.at(tri_ind).type;
-        if (m_region2tri_inds.count(region))
-        {
-        }
-        if (m_surface2regions.count(type))
-        {
-        }
-        else
-        {
-        }
-
-        if (tri_ind >= m_tri2surface.size())
-        {
-            //! upgrade memory
-        }
-    }
-
-public:
-    using RegionMap = std::unordered_map<RegionId, std::vector<cdt::TriInd>>;
-    using SurfaceMap = std::unordered_map<SurfaceType, std::vector<RegionId>>;
-
-    RegionMap m_region2tri_inds;
-    SurfaceMap m_surface2regions;
-    std::vector<SurfaceData> m_tri2surface;
-};
 
 enum class WallType
 {
@@ -233,6 +129,7 @@ private:
     bool m_is_sprinting = false;
     bool m_is_turning = false;
 
+    bool m_is_selecting_wall = false;
 
     float m_time = 0.f;
     std::chrono::high_resolution_clock::time_point tic;
@@ -249,4 +146,7 @@ private:
     std::shared_ptr<Font> m_font;
 
     Averager m_avg_frame_time;
+
+
+
 };

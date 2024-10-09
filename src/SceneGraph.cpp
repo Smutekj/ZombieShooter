@@ -44,32 +44,6 @@ void SceneGraph::updateRoot(int root_ind, float dt)
     }
 }
 
-template <class GameObjType>
-bool SceneGraph::addObject(std::shared_ptr<GameObjType> p_obj)
-{
-    SceneNode new_node{{}, p_obj.get(), -1};
-    auto new_scene_ind = m_nodes.addObject(new_node);
-    m_roots.insert(new_scene_ind);
-    m_obj_map[p_obj->getId()] = new_scene_ind;
-    return true;
-}
-
-template <class GameObjType>
-bool SceneGraph::addAsChildOf(int parent_entity_id, std::shared_ptr<GameObjType> new_obj)
-{
-    auto parent_ind = m_obj_map.at(parent_entity_id);
-    auto &parent_node = m_nodes.at(parent_ind);
-    auto &children = parent_node.children;
-
-    SceneNode new_node{{}, new_obj.get(), parent_ind};
-    auto new_ind = m_nodes.addObject(new_node);
-
-    assert(std::find(children.begin(), children.end(), new_ind) == children.end()); //! the index does not exist!
-    children.push_back(new_ind);
-    m_obj_map[new_obj->getId()] = new_ind;
-    return true;
-}
-
 void SceneGraph::changeParentOf(int entity_id, int new_parent_entity_id)
 {
 

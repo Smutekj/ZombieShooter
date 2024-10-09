@@ -171,6 +171,7 @@ void GameWorld::addQueuedEntities()
         }
 
         m_entities.at(new_id)->onCreation();
+        m_name2ids[new_name].insert(new_id);
         m_name2id[new_name] = new_id;
         m_id2name[new_id] = new_name;
     }

@@ -48,5 +48,5 @@ void main()
     float right_eye = 1.0 - smoothstep(0.05, 0.075, right_eye_sdf);
 
     vec3 result = u_color_edge *shape_factor + 0.*u_color*(right_eye + left_eye);
-    FragColor = vec4(result, clamp(shape_factor + 0.*(right_eye + left_eye), 0., 1.));
+    FragColor = v_color*vec4(result, clamp(shape_factor + 0.*(right_eye + left_eye), 0., 1.));
 }                                          

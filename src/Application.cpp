@@ -2,6 +2,7 @@
 #include "PostEffects.h"
 #include "DrawLayer.h"
 #include "LuaWrapper.h"
+#include "Wall.h"
 
 #include <IncludesGl.h>
 #include <Utils/RandomTools.h>
@@ -78,18 +79,40 @@ void drawProgramToTexture(Sprite2 &rect, Renderer &target, std::string program)
     target.drawAll();
 }
 
-struct EdgeLord
-{
-
-public:
-};
-
 void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal &map, SurfaceManager &surfaces)
 {
     cdt.reset();
     map.extractBoundaries();
     auto edges = map.extractEdges();
     std::vector<cdt::EdgeVInd> edge_inds;
+    
+    int dx = map::MAP_SIZE_X/map::MAP_GRID_CELLS_X;
+    int dy = map::MAP_SIZE_Y/map::MAP_GRID_CELLS_Y;
+
+    //! insert points around the map perimeter to prevent large
+    utils::Vector2i prev_point1 = {dx, dy};
+    utils::Vector2i prev_point2 = {dx, (map.m_cell_count.y - 1)*dy};
+    for (int ix = 3; ix < map.m_cell_count.x - 1; ix += 2)
+    {
+        utils::Vector2i point1 = {ix * dx, dy};
+        utils::Vector2i point2 = {ix * dx, (map.m_cell_count.y - 1) * dy};
+        edges.push_back({prev_point1, point1});
+        edges.push_back({prev_point2, point2});
+        prev_point1 = point1;
+        prev_point2 = point2;
+    }
+    prev_point1 = {dx, dy};
+    prev_point2 = {(map.m_cell_count.x - 1) * dx, dy};
+    for (int iy = 3; iy < map.m_cell_count.y - 1; iy += 2)
+    {
+        utils::Vector2i point1 = {dx, iy * dy};
+        utils::Vector2i point2 = {(map.m_cell_count.x - 1) * dx, iy * dy};
+        edges.push_back({prev_point1, point1});
+        edges.push_back({prev_point2, point2});
+        prev_point1 = point1;
+        prev_point2 = point2;
+    }
+
     for (auto &e : edges)
     {
         cdt::EdgeVInd e_ind;
@@ -105,11 +128,17 @@ void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal
     {
         cdt.insertConstraint(e);
     }
-    if (!surfaces.readFromMap(map))
+
+    if (!surfaces.readFromMap(edge_inds, edges, cdt))
     {
         throw std::runtime_error("Map is fucked :(");
     }
+    //! update pathfinder
     GameWorld::getWorld().getPathFinder().update();
+
+    //! update vision fields
+    auto player = GameWorld::getWorld().get<PlayerEntity>("Player");
+    player->m_vision.onTriangulationChange();
 }
 
 void Application::initializeLayers()
@@ -138,10 +167,10 @@ void Application::initializeLayers()
     // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
 
     auto &fire_layer = m_layers.addLayer("Fire", 6, options);
-    fire_layer.addEffect(std::make_unique<Bloom>(width, height));
+    fire_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
 
-    auto &wall_layer = m_layers.addLayer("Wall", 0, options);
-    wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
+    auto &wall_layer = m_layers.addLayer("Wall", 5000, options);
+    wall_layer.addEffect(std::make_unique<Bloom3>(width, height, options));
 
     auto &light_layer = m_layers.addLayer("Light", 150, options);
     light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
@@ -150,7 +179,9 @@ void Application::initializeLayers()
     light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
     light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
 
-    auto &water_layer = m_layers.addLayer("Water", 3, options);
+    auto &water_layer = m_layers.addLayer("Water", 0, options);
+
+    auto &ui_layer = m_layers.addLayer("UI", 1000, text_options);
     // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
     //
 }
@@ -161,6 +192,7 @@ Application::Application(int width, int height) : m_window(width, height),
                                                   m_scene_canvas(m_scene_pixels)
 {
     using namespace map;
+    GameWorld::getWorld().getPathFinder().m_surfaces = &m_surfaces;
 
     initializeLayers();
 
@@ -178,24 +210,12 @@ Application::Application(int width, int height) : m_window(width, height),
         m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {rx, ry});
     }
 
-    updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
-
     p_player = world.addObject<PlayerEntity>("Player");
     p_player->setPosition({500, 500});
     p_player->setAngle(90);
     world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
 
-    for (int i = 0; i < 0; ++i)
-    {
-        auto new_enemy = world.addObject("Enemy", "E" + std::to_string(i), -1);
-        if (new_enemy)
-        {
-            auto rand_pos = randomPosInBox({5, 5}, {1900, 1900});
-            new_enemy->setPosition(rand_pos);
-            static_cast<Enemy &>(*new_enemy).m_target = p_player.get();
-            static_cast<Enemy &>(*new_enemy).m_target_pos = p_player->getPosition();
-        }
-    }
+    updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
 
     std::filesystem::path path{"../Resources/"};
     auto shader_filenames = extractNamesInDirectory(path, ".frag");
@@ -240,6 +260,10 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
     // m_layers.activate("Light");
+    // m_layers.activate("Smoke");
+    // m_layers.activate("Fire");
+    // m_layers.activate("Unit");
+    // m_layers.activate("UI");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -402,8 +426,20 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     }
     else if (event.button == SDL_BUTTON_LEFT)
     {
-        selectInWorld(m_selection_click_pos, m_window_renderer.getMouseInWorld());
         m_is_selecting = false;
+        if (m_is_selecting_wall)
+        {
+            auto selected_walls = selectWalls(m_selection_click_pos, mouse_pos);
+            for (auto wall : selected_walls)
+            {
+                wall->m_constraints_motion = !wall->m_constraints_motion;
+                p_player->m_vision.toggleVisibility(wall->m_cdt_edge.tri_ind, wall->m_cdt_edge.ind_in_tri);
+            }
+        }
+        else
+        {
+            selectInWorld(m_selection_click_pos, mouse_pos);
+        }
     }
     else if (event.button == SDL_BUTTON_RIGHT)
     {
@@ -428,6 +464,7 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
         if (water)
         {
             static_cast<Water &>(*water).readFromMap(cdt, connected_inds);
+            m_surfaces.changeSurface(cdt, mouse_pos, SurfaceType::Water);
         }
     }
 
@@ -470,6 +507,9 @@ void Application::onKeyRelease(SDL_Keycode key)
         break;
     case SDLK_s:
         m_is_moving_down = false;
+        break;
+    case SDLK_t:
+        m_is_selecting_wall = !m_is_selecting_wall;
         break;
     case SDLK_LSHIFT:
         m_is_sprinting = false;
@@ -520,7 +560,7 @@ void Application::fireProjectile(ProjectileTarget target, utils::Vector2f from)
         auto &projectile = static_cast<Projectile &>(*world.addObject(ObjectType::Bullet, "Projectile"));
         projectile.setScriptName("frostbolt");
         projectile.setPosition(from);
-        projectile.setSize(10.f);
+        projectile.setSize(50.f);
         projectile.setTarget(p_player->target_enemy);
         p_player->setTarget(p_player->target_enemy);
     }
@@ -649,7 +689,7 @@ void Application::update(float dt = 0.016f)
             else
             {
             }
-            float new_angle = dir2angle(dr_new);
+            float new_angle = utils::dir2angle(dr_new);
             p_player->setAngle(new_angle);
         }
     }

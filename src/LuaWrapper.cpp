@@ -1,5 +1,6 @@
 #include "LuaWrapper.h"
 #include "GameWorld.h"
+#include "Wall.h"
 #include "AILuaComponent.h"
 #include "Entities.h"
 #include "Enviroment.h"
@@ -94,6 +95,10 @@ LuaScriptStatus LuaWrapper::loadScript(const std::string &script_name)
     std::filesystem::path path = getPathToScripts(script_name);
 
     auto lua = getSingleton();
+    if(!std::filesystem::exists(path))
+    {
+        return LuaScriptStatus::Broken; //! file does not exist
+    }
     auto last_change = std::filesystem::last_write_time(path);
 
     if (m_script2last_change.count(script_name) > 0 && m_script2last_change.at(script_name) == last_change)
@@ -644,7 +649,7 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("x", &Vector2f::x)
         .addProperty("y", &Vector2f::y)
         .addFunction("__add", &Vector2f::operator+)
-        // .addFunction("__sub", &Vector2f::oerator-)
+        .addFunction("__sub", &Vector2f::operator-)
         .endClass()
         .beginClass<utils::Vector2i>("VecI")
         .addConstructor<void (*)(float, float)>()
@@ -782,9 +787,11 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("angle", &GameObject::getAngle, &GameObject::setAngle)
         .addProperty("target", &GameObject::getTarget, &GameObject::setTarget)
         .addProperty("target_pos", &GameObject::m_target_pos)
+        .addProperty("scale", &GameObject::getSize, &GameObject::setSize)
         .addProperty("id", &GameObject::getId)
         .addProperty("type", &GameObject::getType)
         .addProperty("vel", &GameObject::m_vel)
+        .addProperty("is_dead", &GameObject::isDead)
         .addFunction("kill", &GameObject::kill)
         .endClass()
         .deriveClass<Enemy, GameObject>("Enemy")

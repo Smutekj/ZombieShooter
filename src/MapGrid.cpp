@@ -189,6 +189,7 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
         return {cell.x * ix, cell.y * iy};
     };
 
+    //! scanning
     for (int iy = 1; iy < m_cell_count.y - 1; ++iy)
     {
         bool is_scanning_up = false;
@@ -343,8 +344,8 @@ std::vector<Edge> MapGridDiagonal::extractEdges() const
 
 bool MapGridDiagonal::isAtBoundary(int ix, int iy) const
 {
-    return ix >= m_cell_count.x - 1 || iy >= m_cell_count.y - 1 ||
-           ix < 1 || iy < 1;
+    return ix >= m_cell_count.x - 2 || iy >= m_cell_count.y - 2 ||
+           ix < 2 || iy < 2;
 }
 
 void MapGridDiagonal::extractBoundaries()

@@ -7,6 +7,8 @@ EnemyData.enemy1.initialize = function(enemy)
     Entity2Abilities[enemy.id][FireBoltAbility.spell_id] = FireBoltAbility;
     -- Entity2Draw[enemy.id] = ;
     print("INITIALIZING ENEMY!!!");
+
+    
 end
 
 

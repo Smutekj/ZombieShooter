@@ -270,9 +270,9 @@ void Bloom3::process(Texture &source, Renderer &target)
     Sprite2 ss;
     ss.m_color = {255, 255, 255, 255};
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha};
-    // for (auto &mip : m_mips)
+    for (auto &mip : m_mips)
     {
-        auto &mip = m_mips.back();
+        // auto &mip = m_mips.back();
         screen_sprite.setTexture(1, mip.pixels_tmp.getTexture());
         screen_sprite.setTexture(0, source); //! DO NOT CHANGE ORDER OF SETTEXTURES!!
         auto pixels_size = target_size;      // mip.pixels.getSize();

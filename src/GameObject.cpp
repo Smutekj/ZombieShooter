@@ -136,6 +136,11 @@ void GameObject::setSize(utils::Vector2f size)
     m_size = size;
 }
 
+utils::Vector2f GameObject::getSize() const
+{
+    return m_size;
+}
+
 void GameObject::setAngle(float angle)
 {
     m_angle = angle;

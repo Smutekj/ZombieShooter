@@ -17,7 +17,7 @@ uniform float u_time;
 uniform float u_perlin_multiplier = 0.2;
 uniform float u_mixture = 0.3;
 uniform float u_cracks_scale = 16.9;
-uniform vec3 u_color = vec3(50., 50., 5.);
+uniform vec3 u_color = vec3(10., 5., 1.);
 uniform vec3 u_cracks_color;
 uniform sampler2D u_texture;
 
@@ -78,7 +78,7 @@ void main()
     // }
 
     vec3 result_color = u_color;
-    result_color.rg = u_color.rg + 35.*perlin_profile*vec2(sin(u_time*2.5));
+    result_color.rg = u_color.rg + 3.*perlin_profile*vec2(sin(u_time*2.5));
 
 
     FragColor = vec4(result_color*(1.-cracks_profile) , 1. - cracks_profile);      

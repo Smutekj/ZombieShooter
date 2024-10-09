@@ -6,6 +6,8 @@ Entity2Abilities = {} -- we store here ids ofof abilities each entity has availa
 Entity2Draw = {}
 Entity2SelectedAbility = {}
 
+Ability2Data = {};
+
 local Ability = { id = 0, cooldown = 1, cast_time = 0., timer = 0, name = "DefaultAbility" }
 
 EnemyData = {

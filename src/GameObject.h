@@ -110,6 +110,7 @@ public:
     const ObjectType& getType() const;
     
     void setSize(utils::Vector2f size);
+    utils::Vector2f getSize() const;
 
 public:
 

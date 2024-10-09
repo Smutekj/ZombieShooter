@@ -1,8 +1,10 @@
 #include "Entities.h"
+#include "Wall.h"
 #include "CollisionSystem.h"
 #include "GameWorld.h"
 #include "Utils/RandomTools.h"
 #include "PathFinding/PathFinder.h"
+#include "Map.h"
 
 #include <Utils/Vector2.h>
 #include <Particles.h>
@@ -42,12 +44,6 @@ inline void truncate(utils::Vector2f &vec, float max_value)
         vec *= max_value / speed;
     }
 }
-
-static float dir2angle(utils::Vector2f dir)
-{
-    return 180.f * std::atan2(dir.y, dir.x) / M_PIf;
-}
-
 void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color, Color eye_color = {1, 0, 0, 1})
 {
     radius /= std::sqrt(2.f);
@@ -98,8 +94,8 @@ float PlayerEntity::getMaxSpeed() const
 
 void PlayerEntity::update(float dt)
 {
-    utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? dir2angle(m_angle) : m_vel / norm(m_vel);
-    m_vision.contrstuctField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
+    utils::Vector2f m_look_dir = utils::approx_equal_zero(norm2(m_vel)) ? utils::dir2angle(m_angle) : m_vel / norm(m_vel);
+    m_vision.constructField(cdt::Vector2f{m_pos.x, m_pos.y}, cdt::Vector2f{m_look_dir.x, m_look_dir.y});
 
     // if(m_disabilities.count())
 
@@ -322,62 +318,6 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
     }
 };
 
-Wall::Wall(TextureHolder &textures, utils::Vector2f from, utils::Vector2f to)
-    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Wall)
-{
-    m_collision_shape = std::make_unique<Polygon>(2);
-    m_collision_shape->points.at(0) = {-0.5f, 0.f};
-    m_collision_shape->points.at(1) = {0.5f, 0.f};
-    // m_collision_shape->points.at(2) = {-0.5f, 0.f};
-    auto dr = from - to;
-    auto angle = dir2angle(dr);
-    auto length = dist(from, to);
-    setPosition((from + to) / 2.f);
-    setAngle(angle);
-    setSize({length, 1.f});
-}
-
-void Wall::update(float dt)
-{
-}
-void Wall::onCreation()
-{
-}
-void Wall::onDestruction() {}
-void Wall::draw(LayersHolder &layers)
-{
-    auto &canvas = layers.getCanvas("Wall");
-
-    auto points = m_collision_shape->getPointsInWorld();
-    assert(points.size() >= 2);
-    auto v0 = points.at(0);
-    auto v1 = points.at(1);
-    canvas.drawLineBatched(v1, v0, 1.0, m_color);
-
-    // auto norm = getNorm();
-    // canvas.drawLineBatched(getPosition(), getPosition() + 5.f*norm, 1., {1,0,0,1});
-}
-void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
-{
-
-    if (obj.getType() == ObjectType::Player || obj.getType() == ObjectType::Enemy)
-    {
-        auto &v = obj.m_vel;
-        auto pos = obj.getPosition();
-        auto norm = getNorm();
-        auto n_dot_v = dot(v, norm);
-        if (n_dot_v >= 0)
-        {
-            v -= n_dot_v * norm;
-            m_color = Color{20, 1, 0, 1};
-        }
-    }
-    if (obj.getType() == ObjectType::Bullet)
-    {
-        // obj.kill();
-    }
-};
-
 // std::map<std::string, Color> getColorTable(std::string script_name,
 //                                              std::unordered_map<std::string, std::shared_ptr<Particles>>& particles)
 // {
@@ -517,7 +457,7 @@ void Projectile::draw(LayersHolder &layers)
     auto p_bolt_canvas = layers.getCanvasP(m_bolt_canvas_name);
 
     float angle = norm2(m_vel) > 0.f ? dir2angle(m_vel) : m_angle;
-    setAngle(angle);
+    setAngle(M_PIf / 180. * angle);
 
     m_bolt_particles.setSpawnPos(m_pos);
     m_bolt_particles.update(0.01f);
@@ -578,8 +518,25 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
 {
     m_collision_shape = std::make_unique<Polygon>(4);
     setSize({10.f, 10.f});
-    // m_target_pos = player->getPosition();
-    m_pathfinding_cd = (rand() % 20) + 120;
+    m_surfaces.toggleWalkable(SurfaceType::Ground);
+
+    m_pathfinding_cd = (rand() % 15) + 60; //! randomize patfinding cd so that they do not do pathfind at the same frame
+    m_path_rule = [&pf, this](cdt::TriInd i1, cdt::TriInd i2) -> bool
+    {
+        if (i2 == -1) //
+        {
+            return false;
+        }
+
+        auto surfaces = pf.m_surfaces;
+        if (surfaces)
+        {
+            auto exit_surface = surfaces->m_tri2surface.at(i1).type;
+            auto entry_surface = surfaces->m_tri2surface.at(i2).type;
+            return m_surfaces.isWalkable(exit_surface);
+        }
+        return false;
+    };
 }
 
 Enemy::~Enemy() {}
@@ -641,14 +598,18 @@ void Enemy::update(float dt)
             if (m_state != AIState::Attacking)
             {
                 // m_color = Color(0, 26, 1, 1);
-                auto path_data = m_pf->doPathFinding({m_pos.x, m_pos.y}, {m_target_pos.x, m_target_pos.y}, m_size.x);
+                auto path_data = m_pf->doPathFinding({m_pos.x, m_pos.y}, {m_target_pos.x, m_target_pos.y}, m_size.x, m_path_rule);
                 m_next_path = path_data.path.at(1);
+                m_next_next_path = m_next_path;
+                if (path_data.path.size() >= 3) //! if there is at least one extra point between start and end;
+                {
+                    m_next_next_path = path_data.path.at(2);
+                }
             }
         }
     }
 
     boidSteering();
-    // avoidMeteors();
 
     truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
@@ -719,6 +680,22 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
     case ObjectType::Wall:
     {
         auto wall = static_cast<Wall *>(&obj);
+        auto i1 = wall->m_cdt_edge.tri_ind;
+        auto &triangles = m_pf->m_cdt.m_triangles;
+        auto i2 = triangles.at(i1).neighbours[wall->m_cdt_edge.ind_in_tri];
+        if (!m_path_rule(i1, i2) || wall->m_constraints_motion) //! constrain movement in we can't pathfind through the wall
+        {
+            auto &v = m_vel;
+            auto pos = obj.getPosition();
+            auto norm = wall->getNorm();
+            auto n_dot_v = dot(v, norm);
+            if (n_dot_v >= 0)
+            {
+                v -= n_dot_v * norm; //! remove normal compotent to the wall (How to make this work with many constraints?)
+                m_color = Color{20, 1, 0, 1};
+            }
+        }
+
         try
         {
             auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyWallCollision");
@@ -775,6 +752,11 @@ void Enemy::draw(LayersHolder &layers)
     {
         std::cout << "ERROR IN EnemyDraw: " << e.what() << "\n";
     }
+
+    auto& canvas = layers.getCanvas("UI");
+    canvas.drawLineBatched(m_pos, m_target_pos, 2., {1,0,0,1});
+    canvas.drawLineBatched(m_pos, m_next_path, 2., {1,1,0,1});
+    canvas.drawLineBatched(m_next_path, m_next_next_path, 2., {0,1,0,1});
 }
 
 void Enemy::avoidMeteors()
@@ -876,6 +858,24 @@ void Enemy::boidSteering()
         {
             seek_force = seek_multiplier * max_vel * dr_to_target / norm(dr_to_target) - m_vel;
         }
+        else
+        {
+            if (m_next_path == m_next_next_path && m_target) //! we reached destination or we need another path
+            {
+                if (utils::dist(m_next_path, m_target_pos) < 2.f) //! if we approach destination
+                {
+                    m_vel *=0.5f;
+                }
+                else
+                {
+                    m_pathfinding_timer = m_pathfinding_cd; //! force pathfinding
+                }
+            }
+            else
+            {
+                m_next_path = m_next_next_path;
+            }
+        }
     }
 
     m_acc += (scatter_force + align_force + seek_force + cohesion_force);
@@ -964,7 +964,7 @@ void Shield::draw(LayersHolder &layers)
     Sprite2 rect(*m_textures->get("bomb"));
     rect.m_texture_handles[0] = 0;
     rect.setPosition(m_pos);
-    rect.setRotation(dir2angle(m_vel));
+    rect.setRotation(utils::dir2angle(m_vel));
     rect.setScale(m_size * 2.f);
 
     unit_canvas.drawSprite(rect, "basicshield", DrawType::Dynamic);

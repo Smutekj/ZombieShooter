@@ -1,15 +1,13 @@
-
-
-for i =1,50 do
+for i = 1, 5 do
     local name = "E" .. tostring(i);
     local enemy = createEnemy(name);
-    local new_pos = Vec(2500, 2500) + randVec(math.random()*2500.);
-    local new_target = Vec(2500, 2500) + randVec(math.random()*2500.);
+    local new_pos = Vec(2500, 2500) + randVec(math.random() * 2500.);
+    local new_target = Vec(2500, 2500) + randVec(math.random() * 2500.);
     print(new_pos.x, new_pos.y)
     enemy.pos = new_pos;
     enemy.target_pos = new_target;
-    print("wtf")
-    print("Created: " .. name); 
+    print("wtf");
+    print("Created: " .. name);
 end
 
 player_p = getPlayer("Player")

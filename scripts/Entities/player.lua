@@ -44,6 +44,7 @@ local function drawAgent(enemy, layers)
     layers.drawSprite(layers, "Wall", sprite, "basicshield");
     sprite.pos = right_eye_pos
     layers.drawSprite(layers, "Wall", sprite, "basicshield");
+    
 
     local angle_rad = math.rad(enemy.angle);
     local dr = Vec(5 * math.cos(angle_rad), 5 * math.sin(angle_rad));

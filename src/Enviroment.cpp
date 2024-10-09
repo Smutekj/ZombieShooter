@@ -20,7 +20,7 @@ EnviromentEffect::EnviromentEffect(TextureHolder &textures, const std::string &s
     : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect), m_script_name(script_name)
 {
     auto status = LuaWrapper::loadScript(script_name);
-    if(status != LuaScriptStatus::Broken)
+    if (status != LuaScriptStatus::Broken)
     {
         loadFromScript(script_name);
     }
@@ -122,6 +122,7 @@ void FireEffect::draw(LayersHolder &layers)
 Water::Water(ShaderHolder &shaders, TextureHolder &textures)
     : m_water_verts(shaders.get("Water")), EnviromentEffect(textures)
 {
+    m_collision_shape = std::make_unique<Polygon>(4);
 }
 void Water::setColor(Color new_color)
 {
@@ -145,6 +146,18 @@ void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<in
         return {world_pos.x / m_target_size.x, world_pos.y / m_target_size.y};
     };
 
+    auto max = [](const auto &r1, const auto &r2)
+    {
+        return utils::Vector2f{std::max(r1.x, r2.x), std::max(r1.y, r2.y)};
+    };
+    auto min = [](const auto &r1, const auto &r2)
+    {
+        return utils::Vector2f{std::min(r1.x, r2.x), std::min(r1.y, r2.y)};
+    };
+
+    utils::Vector2f max_r;
+    utils::Vector2f min_r;
+
     auto n_verts_prev = m_water_verts.size();
     m_water_verts.resize(3 * water_tri_inds.size());
     for (int ind = 0; ind < water_tri_inds.size(); ++ind)
@@ -159,7 +172,13 @@ void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<in
         m_water_verts[3 * ind + 0].tex_coord = normalize_tex(tri.verts[0]);
         m_water_verts[3 * ind + 1].tex_coord = normalize_tex(tri.verts[1]);
         m_water_verts[3 * ind + 2].tex_coord = normalize_tex(tri.verts[2]);
+
+        max_r = max(asFloat(tri.verts[2]), max(tri.verts[0], tri.verts[1]));
+        min_r = min(asFloat(tri.verts[2]), min(tri.verts[0], tri.verts[1]));
     }
+
+    setPosition((max_r + min_r) / 2.f);
+    setSize((max_r - min_r));
 }
 
 std::shared_ptr<Font> random_font = nullptr;
@@ -231,10 +250,10 @@ void EnviromentEffect::doScript(const std::string &script_name)
 void EnviromentEffect::update(float dt)
 {
 
-    if(m_lifetime > 0.f)
+    if (m_lifetime > 0.f)
     {
         m_time += dt;
-        if(m_time > m_lifetime)
+        if (m_time > m_lifetime)
         {
             kill();
         }
@@ -247,10 +266,12 @@ void EnviromentEffect::update(float dt)
     }
 
     auto script_status = LuaWrapper::loadScript(m_script_name);
-    if (script_status == LuaScriptStatus::Ok  || script_status == LuaScriptStatus::Broken)
+    if (script_status == LuaScriptStatus::Ok || script_status == LuaScriptStatus::Broken)
     {
         return; //! do nothing since nothing changed or the file is broken
-    }else{
+    }
+    else
+    {
         loadFromScript(m_script_name);
     }
 }
