@@ -4,6 +4,11 @@
 #include <numeric>
 #include <cmath>
 
+
+Statistics::Statistics()
+: m_hist(101) 
+{}
+
 void Statistics::addNumber(double num)
 {
     data.push_back(num);
@@ -15,14 +20,18 @@ void Statistics::addNumber(double num)
     m_hist.addNumber(num);
 }
 
-Histogram::Histogram(std::size_t n_bins, double min_val = 0., double max_val = 1.)
+Histogram::Histogram(std::size_t n_bins, double min_val, double max_val)
     : min_value(min_val), max_value(max_val), m_bin_counts(n_bins)
 {
 }
 
 void Histogram::addNumber(double num)
 {
-    m_bin_counts.at(getIndex(num))++;
+    auto index = getIndex(num);
+    if(index != -1)
+    {
+        m_bin_counts.at(index)++;
+    }
 }
 
 void Histogram::clear()

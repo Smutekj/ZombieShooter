@@ -30,6 +30,9 @@ public:
 
 struct Statistics
 {
+
+    explicit Statistics();
+
     void addNumber(double num);
 
 
