@@ -2,8 +2,8 @@
 
 precision mediump float;    
 
-#include "../external/lygia/generative/pnoise.glsl"
-#include "../external/lygia/generative/voronoise.glsl"
+#include "../../external/lygia/generative/pnoise.glsl"
+#include "../../external/lygia/generative/voronoise.glsl"
                  
 in vec2 v_tex_coord;                          
 in vec4 v_color;       

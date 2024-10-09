@@ -337,14 +337,14 @@ void GameWorld::removeEntityCallback(EntityEventType type, int callback_id)
 }
 void GameWorld::loadTextures()
 {
-    std::filesystem::path resources_path{""};
+    std::filesystem::path resources_path{"../Resources/Textures/"};
 
     auto texture_filenames = extractNamesInDirectory(resources_path, ".png");
     for (auto &texture_filename : texture_filenames)
     {
         auto pos_right = texture_filename.find_last_of('.');
         std::string texture_name = texture_filename.substr(0, pos_right);
-        m_textures.add(texture_name, "" + texture_filename);
+        m_textures.add(texture_name, resources_path.string() + texture_filename);
     }
 
     m_shaders.load("Shiny", "basicinstanced.vert", "shiny.frag");

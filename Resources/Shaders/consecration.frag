@@ -2,10 +2,10 @@
 
 precision mediump float;    
 
-#include "../external/lygia/generative/voronoise.glsl"
-#include "../external/lygia/math/mod289.glsl"
-#include "../external/lygia/math/taylorInvSqrt.glsl"
-#include "../external/lygia/math/quintic.glsl"
+#include "../../external/lygia/generative/voronoise.glsl"
+#include "../../external/lygia/math/mod289.glsl"
+#include "../../external/lygia/math/taylorInvSqrt.glsl"
+#include "../../external/lygia/math/quintic.glsl"
 #include "cracks.glsl"
                  
 in vec2 v_tex_coord;                          

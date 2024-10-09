@@ -2,8 +2,8 @@
 
 precision mediump float;    
 
-#include "../external/lygia/sdf/rectSDF.glsl"
-#include "../external/lygia/sdf/starSDF.glsl"
+#include "../../external/lygia/sdf/rectSDF.glsl"
+#include "../../external/lygia/sdf/starSDF.glsl"
                  
 in vec2 v_tex_coord;                          
 in vec4 v_color;       

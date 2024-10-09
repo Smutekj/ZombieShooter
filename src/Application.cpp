@@ -85,13 +85,13 @@ void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal
     map.extractBoundaries();
     auto edges = map.extractEdges();
     std::vector<cdt::EdgeVInd> edge_inds;
-    
-    int dx = map::MAP_SIZE_X/map::MAP_GRID_CELLS_X;
-    int dy = map::MAP_SIZE_Y/map::MAP_GRID_CELLS_Y;
+
+    int dx = map::MAP_SIZE_X / map::MAP_GRID_CELLS_X;
+    int dy = map::MAP_SIZE_Y / map::MAP_GRID_CELLS_Y;
 
     //! insert points around the map perimeter to prevent large
     utils::Vector2i prev_point1 = {dx, dy};
-    utils::Vector2i prev_point2 = {dx, (map.m_cell_count.y - 1)*dy};
+    utils::Vector2i prev_point2 = {dx, (map.m_cell_count.y - 1) * dy};
     for (int ix = 3; ix < map.m_cell_count.x - 1; ix += 2)
     {
         utils::Vector2i point1 = {ix * dx, dy};
@@ -217,16 +217,6 @@ Application::Application(int width, int height) : m_window(width, height),
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
 
-    std::filesystem::path path{""};
-    auto shader_filenames = extractNamesInDirectory(path, ".frag");
-
-    // assert(m_layers.hasLayer("Water"));
-    for (auto &filename : shader_filenames)
-    {
-        auto pos_right = filename.find_last_of('.');
-        std::string shader_name = filename.substr(0, pos_right);
-        // m_window_renderer.addShader(shader_name, "basicinstanced.vert",  "" + filename);
-    }
     m_window_renderer.addShader("circle", "basicinstanced.vert", "circle.frag");
     m_window_renderer.addShader("Shiny", "basicinstanced.vert", "shiny.frag");
     m_window_renderer.addShader("Water", "basictex.vert", "test.frag");
@@ -246,13 +236,13 @@ Application::Application(int width, int height) : m_window(width, height),
     auto &water = world.addVisualEffect<Water>("Water");
     // auto effect = world.addEffect("Fire", "TestFire", -1);
     // effect->setPosition(p_player->getPosition());
-
-    auto texture_filenames = extractNamesInDirectory(path, ".png");
+    std::filesystem::path texture_path = "../Resources/Textures/";
+    auto texture_filenames = extractNamesInDirectory(texture_path, ".png");
     for (auto &texture_filename : texture_filenames)
     {
         auto pos_right = texture_filename.find_last_of('.');
         std::string texture_name = texture_filename.substr(0, pos_right);
-        m_textures.add(texture_name, "" + texture_filename);
+        m_textures.add(texture_name, texture_path.string() + texture_filename);
     }
 
     //! set view and add it to renderers
@@ -712,18 +702,22 @@ void Application::update(float dt = 0.016f)
     //! clear and draw into scene
     m_scene_canvas.clear({0, 0, 0, 0});
     //! draw background
-    Sprite background(*m_textures.get("grass"));
-    background.m_color = ColorByte{255, 255, 255, 0};
     utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x,
                                 m_map->m_cell_count.y * m_map->m_cell_size.y};
-    background.setPosition(map_size / 2.f);
-    background.setScale(map_size / 2.f);
     auto old_view = m_scene_canvas.m_view;
-    m_scene_canvas.m_view = m_window_renderer.m_view;
-    m_scene_canvas.drawSprite(background, "Instanced", DrawType::Dynamic);
-    m_scene_canvas.drawAll();
-    m_scene_canvas.m_view = old_view;
-    m_layers.draw(m_scene_canvas, m_window_renderer.m_view);
+    if (auto text = m_textures.get("grass"))
+    {
+        Sprite background(*m_textures.get("grass"));
+        background.m_color = ColorByte{255, 255, 255, 0};
+
+        background.setPosition(map_size / 2.f);
+        background.setScale(map_size / 2.f);
+        m_scene_canvas.m_view = m_window_renderer.m_view;
+        m_scene_canvas.drawSprite(background, "Instanced", DrawType::Dynamic);
+        m_scene_canvas.drawAll();
+        m_scene_canvas.m_view = old_view;
+        m_layers.draw(m_scene_canvas, m_window_renderer.m_view);
+    }
 
     // //! draw everything to a window quad
     m_window.clear({0, 0, 0, 0});
