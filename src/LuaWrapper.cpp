@@ -678,8 +678,8 @@ void LuaWrapper::initializeLuaFunctions()
         .beginClass<UniformType>("Uniform")
         .endClass()
         .beginClass<Renderer>("Renderer")
-        .addFunction("drawRectangle",  std::function<void(Renderer*, Rectangle2&, const std::string&, Color)>(
-            [](Renderer* p_this, Rectangle2& r, const std::string& shader_id, Color c){
+        .addFunction("drawRectangle",  std::function<void(Renderer*, RectangleSimple&, const std::string&, Color)>(
+            [](Renderer* p_this, RectangleSimple& r, const std::string& shader_id, Color c){
                  p_this->drawRectangle(r, c, shader_id, DrawType::Dynamic);}))
         .addFunction("drawSprite", &Renderer::drawSpriteDynamic)
         .addFunction("drawText", std::function<void(Renderer*, Text&, const std::string&)>(
@@ -743,13 +743,13 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("scale", &Transform::getScale, &Transform::setScale)
         .addProperty("angle", &Transform::getRotation, &Transform::setRotation)
         .endClass()
-        .deriveClass<Rectangle2, Transform>("Rectangle")
+        .deriveClass<RectangleSimple, Transform>("Rectangle")
         .addConstructor<void (*)()>()
         .endClass()
-        .deriveClass<Sprite2, Rectangle2>("Sprite")
+        .deriveClass<Sprite, RectangleSimple>("Sprite")
         .addConstructor<void (*)()>()
-        .addProperty("color", &Sprite2::m_color)
-        .addFunction("setTexture", &Sprite2::setTextureP)
+        .addProperty("color", &Sprite::m_color)
+        .addFunction("setTexture", &Sprite::setTextureP)
         .endClass()
         .deriveClass<Text, Transform>("Text")
         .addConstructor<void (*)(std::string)>()

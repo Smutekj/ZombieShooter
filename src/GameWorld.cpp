@@ -337,30 +337,30 @@ void GameWorld::removeEntityCallback(EntityEventType type, int callback_id)
 }
 void GameWorld::loadTextures()
 {
-    std::filesystem::path resources_path{"../Resources/"};
+    std::filesystem::path resources_path{""};
 
     auto texture_filenames = extractNamesInDirectory(resources_path, ".png");
     for (auto &texture_filename : texture_filenames)
     {
         auto pos_right = texture_filename.find_last_of('.');
         std::string texture_name = texture_filename.substr(0, pos_right);
-        m_textures.add(texture_name, "../Resources/" + texture_filename);
+        m_textures.add(texture_name, "" + texture_filename);
     }
 
-    m_shaders.load("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
-    m_shaders.load("Water", "../Resources/basictex.vert", "../Resources/water.frag");
-    m_shaders.load("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
-    m_shaders.load("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
-    m_shaders.load("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
-    m_shaders.load("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
-    m_shaders.load("VisionLight2", "../Resources/basictex.vert", "../Resources/visionLight.frag");
-    m_shaders.load("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
-    m_shaders.load("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_shaders.load("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
-    m_shaders.load("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
-    m_shaders.load("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");
-    m_shaders.load("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
-    m_shaders.load("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
+    m_shaders.load("Shiny", "basicinstanced.vert", "shiny.frag");
+    m_shaders.load("Water", "basictex.vert", "water.frag");
+    m_shaders.load("Instanced", "basicinstanced.vert", "texture.frag");
+    m_shaders.load("LastPass", "basicinstanced.vert", "lastPass.frag");
+    m_shaders.load("VertexArrayDefault", "basictex.vert", "fullpass.frag");
+    m_shaders.load("VisionLight", "basictex.vert", "fullpassLight.frag");
+    m_shaders.load("VisionLight2", "basictex.vert", "visionLight.frag");
+    m_shaders.load("Instanced", "basicinstanced.vert", "texture.frag");
+    m_shaders.load("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_shaders.load("combineBloom", "basicinstanced.vert", "combineBloom.frag");
+    m_shaders.load("combineBloomBetter", "basicinstanced.vert", "combineBloomBetter.frag");
+    m_shaders.load("combineSmoke", "basicinstanced.vert", "combineSmoke.frag");
+    m_shaders.load("combineEdges", "basicinstanced.vert", "combineEdges.frag");
+    m_shaders.load("lightning", "basicinstanced.vert", "lightning.frag");
 
     m_font = std::make_shared<Font>("arial.ttf");
 }

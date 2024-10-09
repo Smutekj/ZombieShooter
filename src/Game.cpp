@@ -40,10 +40,10 @@
 //     m_texture_pass[1].create(800, 600);
 //     m_texture_pass[0].setSmooth(true);
 //     m_texture_pass[1].setSmooth(true);
-//     m_light_smoother.loadFromFile("../Resources/basic.vert", "../Resources/lightSmootherRGB.frag");
-//     m_full_pass.loadFromFile("../Resources/basic.vert", "../Resources/fullpass.frag");
+//     m_light_smoother.loadFromFile("basic.vert", "lightSmootherRGB.frag");
+//     m_full_pass.loadFromFile("basic.vert", "fullpass.frag");
 
-//     m_font.loadFromFile("../Resources/arial.ttf");
+//     m_font.loadFromFile("arial.ttf");
 
 //     for (int i = 0; i < 100; ++i)
 //     {

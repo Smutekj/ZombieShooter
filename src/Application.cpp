@@ -72,7 +72,7 @@ void setUniforms(Shader &program, ShaderUniform<UniformType> &...values)
     (program.setUniform(values.name, values.value), ...);
 }
 
-void drawProgramToTexture(Sprite2 &rect, Renderer &target, std::string program)
+void drawProgramToTexture(Sprite &rect, Renderer &target, std::string program)
 {
     target.clear({1, 1, 1, 1});
     target.drawSprite(rect, program, DrawType::Dynamic);
@@ -156,12 +156,12 @@ void Application::initializeLayers()
     text_options.internal_format = TextureFormat::RGBA;
 
     auto &text_layer = m_layers.addLayer("Text", 100, text_options);
-    text_layer.m_canvas.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
+    text_layer.m_canvas.addShader("Text", "basicinstanced.vert", "textBorder.frag");
 
     auto &unit_layer = m_layers.addLayer("Unit", 3, options);
     // unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
-    unit_layer.m_canvas.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
-    unit_layer.m_canvas.addShader("lightning", "../Resources/basicinstanced.vert", "../Resources/lightning.frag");
+    unit_layer.m_canvas.addShader("Shiny", "basicinstanced.vert", "shiny.frag");
+    unit_layer.m_canvas.addShader("lightning", "basicinstanced.vert", "lightning.frag");
 
     auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
     // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
@@ -176,8 +176,8 @@ void Application::initializeLayers()
     light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
     light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
     light_layer.addEffect(std::make_unique<LightCombine>(width, height));
-    light_layer.m_canvas.addShader("VisionLight", "../Resources/basictex.vert", "../Resources/fullpassLight.frag");
-    light_layer.m_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
+    light_layer.m_canvas.addShader("VisionLight", "basictex.vert", "fullpassLight.frag");
+    light_layer.m_canvas.addShader("combineBloomBetter", "basicinstanced.vert", "combineBloomBetter.frag");
 
     auto &water_layer = m_layers.addLayer("Water", 0, options);
 
@@ -217,7 +217,7 @@ Application::Application(int width, int height) : m_window(width, height),
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
 
-    std::filesystem::path path{"../Resources/"};
+    std::filesystem::path path{""};
     auto shader_filenames = extractNamesInDirectory(path, ".frag");
 
     // assert(m_layers.hasLayer("Water"));
@@ -225,22 +225,22 @@ Application::Application(int width, int height) : m_window(width, height),
     {
         auto pos_right = filename.find_last_of('.');
         std::string shader_name = filename.substr(0, pos_right);
-        // m_window_renderer.addShader(shader_name, "../Resources/basicinstanced.vert",  "../Resources/" + filename);
+        // m_window_renderer.addShader(shader_name, "basicinstanced.vert",  "" + filename);
     }
-    m_window_renderer.addShader("circle", "../Resources/basicinstanced.vert", "../Resources/circle.frag");
-    m_window_renderer.addShader("Shiny", "../Resources/basicinstanced.vert", "../Resources/shiny.frag");
-    m_window_renderer.addShader("Water", "../Resources/basictex.vert", "../Resources/test.frag");
-    m_window_renderer.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
-    m_window_renderer.addShader("LastPass", "../Resources/basicinstanced.vert", "../Resources/lastPass.frag");
-    m_window_renderer.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
-    m_window_renderer.addShader("Text", "../Resources/basicinstanced.vert", "../Resources/textBorder.frag");
-    m_scene_canvas.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
-    m_scene_canvas.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_scene_canvas.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
-    m_scene_canvas.addShader("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
-    m_scene_canvas.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineBloomBetter.frag");
-    m_scene_canvas.addShader("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");
-    m_scene_canvas.addShader("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
+    m_window_renderer.addShader("circle", "basicinstanced.vert", "circle.frag");
+    m_window_renderer.addShader("Shiny", "basicinstanced.vert", "shiny.frag");
+    m_window_renderer.addShader("Water", "basictex.vert", "test.frag");
+    m_window_renderer.addShader("Instanced", "basicinstanced.vert", "texture.frag");
+    m_window_renderer.addShader("LastPass", "basicinstanced.vert", "lastPass.frag");
+    m_window_renderer.addShader("VertexArrayDefault", "basictex.vert", "fullpass.frag");
+    m_window_renderer.addShader("Text", "basicinstanced.vert", "textBorder.frag");
+    m_scene_canvas.addShader("Instanced", "basicinstanced.vert", "texture.frag");
+    m_scene_canvas.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_scene_canvas.addShader("VertexArrayDefault", "basictex.vert", "fullpass.frag");
+    m_scene_canvas.addShader("combineBloom", "basicinstanced.vert", "combineBloom.frag");
+    m_scene_canvas.addShader("combineBloomBetter", "basicinstanced.vert", "combineBloomBetter.frag");
+    m_scene_canvas.addShader("combineSmoke", "basicinstanced.vert", "combineSmoke.frag");
+    m_scene_canvas.addShader("combineEdges", "basicinstanced.vert", "combineEdges.frag");
 
     // m_water = std::make_shared<Water>(m_window_renderer.getShaders(), m_layers);
     auto &water = world.addVisualEffect<Water>("Water");
@@ -252,7 +252,7 @@ Application::Application(int width, int height) : m_window(width, height),
     {
         auto pos_right = texture_filename.find_last_of('.');
         std::string texture_name = texture_filename.substr(0, pos_right);
-        m_textures.add(texture_name, "../Resources/" + texture_filename);
+        m_textures.add(texture_name, "" + texture_filename);
     }
 
     //! set view and add it to renderers
@@ -712,7 +712,7 @@ void Application::update(float dt = 0.016f)
     //! clear and draw into scene
     m_scene_canvas.clear({0, 0, 0, 0});
     //! draw background
-    Sprite2 background(*m_textures.get("grass"));
+    Sprite background(*m_textures.get("grass"));
     background.m_color = ColorByte{255, 255, 255, 0};
     utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x,
                                 m_map->m_cell_count.y * m_map->m_cell_size.y};
@@ -730,7 +730,7 @@ void Application::update(float dt = 0.016f)
     auto scene_size = m_scene_pixels.getSize();
 
     old_view = m_window_renderer.m_view;
-    Sprite2 screen_sprite(m_scene_pixels.getTexture());
+    Sprite screen_sprite(m_scene_pixels.getTexture());
     screen_sprite.setPosition(scene_size / 2.f);
     screen_sprite.setScale(scene_size / 2.f);
     m_window_renderer.m_view.setCenter(screen_sprite.getPosition());
@@ -761,7 +761,7 @@ void Application::drawUI(float dt)
     text.setText(text_test);
     m_window_renderer.drawText(text, "Text", DrawType::Dynamic);
 
-    Sprite2 health_bar(*m_textures.get("bomb"));
+    Sprite health_bar(*m_textures.get("bomb"));
     health_bar.m_texture_handles[0] = 0;
 
     // float x_scale = p_player->m_health / (double)p_player->m_max_health;

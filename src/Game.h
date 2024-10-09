@@ -76,8 +76,8 @@
 // public:
 //     EdgeSmoother() : ScenePostProcessor()
 //     {
-//         m_shaders.load(Shaders::ID::GaussianBlurPass, "../Resources/basic.vert", "../Resources/lightSmootherRGB.frag");
-//         m_shaders.load(Shaders::ID::GaussianBlurPass, "../Resources/basic.vert", "../Resources/fullpass.frag");
+//         m_shaders.load(Shaders::ID::GaussianBlurPass, "basic.vert", "lightSmootherRGB.frag");
+//         m_shaders.load(Shaders::ID::GaussianBlurPass, "basic.vert", "fullpass.frag");
 //     }
 
 //     virtual void process(const sf::RenderTexture &source, sf::RenderTarget &destination)

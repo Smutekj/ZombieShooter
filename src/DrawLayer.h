@@ -46,12 +46,6 @@ private:
     bool m_is_active = true;
 };
 
-struct LuaSprite
-{
-    utils::Vector2f pos;
-    utils::Vector2f scale;
-    float angle;
-};
 
 struct LayersHolder
 {
@@ -69,31 +63,10 @@ struct LayersHolder
 
     void clearAllLayers();
 
-    void drawSprite(const std::string &layer, Sprite2 &sprite, const std::string &shader_id)
-    {
-        auto p_canvas = getCanvasP(layer);
-        if (p_canvas)
-        {
-            p_canvas->drawSprite(sprite, shader_id, DrawType::Dynamic);
-        }
-    }
+    void drawSprite(const std::string &layer, Sprite &sprite, const std::string &shader_id);
     void drawLine(const std::string &layer,
-                  utils::Vector2f start, utils::Vector2f end, float thickness, Color color = {0, 1, 0, 1})
-    {
-        auto p_canvas = getCanvasP(layer);
-        if (p_canvas)
-        {
-            p_canvas->drawLineBatched(start, end, thickness, color, DrawType::Dynamic);
-        }
-    }
-    void drawRectangle(const std::string &layer, Rectangle2 &rect, const std::string &shader_id, Color color = {1, 0, 0, 1})
-    {
-        auto p_canvas = getCanvasP(layer);
-        if (p_canvas)
-        {
-            p_canvas->drawRectangle(rect, color, shader_id, DrawType::Dynamic);
-        }
-    }
+                  utils::Vector2f start, utils::Vector2f end, float thickness, Color color = {0, 1, 0, 1});
+    void drawRectangle(const std::string &layer, RectangleSimple &rect, const std::string &shader_id, Color color = {1, 0, 0, 1});
     // void drawEllipse(const std::string &layer, Ellipse &e,
     //                  const std::string &shader_id, Color color = {1, 0, 0, 1})
     // {

@@ -63,7 +63,7 @@ void DrawLayer::drawDirectly(Renderer &canvas)
 {
     auto old_view = canvas.m_view;
     auto target_size = canvas.getTargetSize();
-    Sprite2 screen_sprite(m_pixels.getTexture());
+    Sprite screen_sprite(m_pixels.getTexture());
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
 
@@ -95,8 +95,8 @@ DrawLayer &LayersHolder::addLayer(std::string name, int depth, TextureOptions op
     auto new_layer = std::make_shared<DrawLayer>(800, 600, options);
     m_layers[depth] = new_layer;
     m_name2depth[name] = depth;
-    new_layer->m_canvas.addShader("VertexArrayDefault", "../Resources/basictex.vert", "../Resources/fullpass.frag");
-    new_layer->m_canvas.addShader("Instanced", "../Resources/basicinstanced.vert", "../Resources/texture.frag");
+    new_layer->m_canvas.addShader("VertexArrayDefault", "basictex.vert", "fullpass.frag");
+    new_layer->m_canvas.addShader("Instanced", "basicinstanced.vert", "texture.frag");
     return *new_layer;
 }
 
@@ -205,3 +205,31 @@ void LayersHolder::draw(Renderer &target, const View &view)
         }
     }
 }
+
+    void LayersHolder::drawSprite(const std::string &layer, Sprite &sprite, const std::string &shader_id)
+    {
+        auto p_canvas = getCanvasP(layer);
+        if (p_canvas)
+        {
+            p_canvas->drawSprite(sprite, shader_id, DrawType::Dynamic);
+        }
+    }
+
+    void LayersHolder::drawLine(const std::string &layer,
+                  utils::Vector2f start, utils::Vector2f end, float thickness, Color color)
+    {
+        auto p_canvas = getCanvasP(layer);
+        if (p_canvas)
+        {
+            p_canvas->drawLineBatched(start, end, thickness, color, DrawType::Dynamic);
+        }
+    }
+
+    void LayersHolder::drawRectangle(const std::string &layer, RectangleSimple &rect, const std::string &shader_id, Color color)
+    {
+        auto p_canvas = getCanvasP(layer);
+        if (p_canvas)
+        {
+            p_canvas->drawRectangle(rect, color, shader_id, DrawType::Dynamic);
+        }
+    }

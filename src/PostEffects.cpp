@@ -12,12 +12,12 @@ Bloom::Bloom(int width, int height)
       m_downsampler3(m_downsampled_pixels3),
       m_downsampler33(m_downsampled_pixels33)
 {
-    m_bloom_renderer1.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
-    m_bloom_renderer2.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_bloom_renderer2.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler3.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_downsampler3.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler33.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
+    m_bloom_renderer1.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
+    m_bloom_renderer2.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_bloom_renderer2.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler3.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_downsampler3.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler33.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
 
     m_bloom_renderer1.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
     m_bloom_renderer2.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
@@ -27,14 +27,14 @@ void Bloom::process(Texture &source, Renderer &target)
 {
     if (!target.hasShader("combineBloom"))
     {
-        target.addShader("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
+        target.addShader("combineBloom", "basicinstanced.vert", "combineBloom.frag");
     }
 
     auto old_view = target.m_view;
     auto old_blend_factors = target.m_blend_factors;
 
     auto target_size = target.getTargetSize();
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
 
@@ -85,9 +85,9 @@ Bloom2::Bloom2(int width, int height, TextureOptions options)
       m_downsampler3(m_downsampled_pixels3),
       m_downsampler33(m_downsampled_pixels33)
 {
-    m_downsampler3.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_downsampler3.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler33.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
+    m_downsampler3.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_downsampler3.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler33.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
 
     m_downsampler3.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
     m_downsampler33.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
@@ -98,18 +98,18 @@ void Bloom2::process(Texture &source, Renderer &target)
 
     if (!target.hasShader("combineBloom"))
     {
-        target.addShader("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
+        target.addShader("combineBloom", "basicinstanced.vert", "combineBloom.frag");
     }
     if (!target.hasShader("combineBloomBetter"))
     {
-        target.addShader("combineBloomBetter", "../Resources/basicinstanced.vert", "../Resources/combineLightBloom.frag");
+        target.addShader("combineBloomBetter", "basicinstanced.vert", "combineLightBloom.frag");
     }
 
     auto old_view = target.m_view;
     auto old_factors = target.m_blend_factors;
 
     auto target_size = target.getTargetSize();
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
     m_downsampler3.m_view.setCenter(screen_sprite.getPosition().x, screen_sprite.getPosition().y);
@@ -182,18 +182,18 @@ void Bloom3::process(Texture &source, Renderer &target)
 
     if (!target.hasShader("combineBloom"))
     {
-        target.addShader("combineBloom", "../Resources/basicinstanced.vert", "../Resources/combineBloom.frag");
+        target.addShader("combineBloom", "basicinstanced.vert", "combineBloom.frag");
     }
     if (!target.hasShader("combineLightBloom"))
     {
-        target.addShader("combineLightBloom", "../Resources/basicinstanced.vert", "../Resources/combineLightBloom.frag");
+        target.addShader("combineLightBloom", "basicinstanced.vert", "combineLightBloom.frag");
     }
 
     auto old_view = target.m_view;
     auto old_factors = target.m_blend_factors;
 
     auto target_size = target.getTargetSize();
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
     auto size = target_size;
@@ -209,7 +209,7 @@ void Bloom3::process(Texture &source, Renderer &target)
 
     for (int pass = 0; pass < 1; ++pass)
     {
-        // Sprite2 ss1(first_mip.pixels.getTexture());
+        // Sprite ss1(first_mip.pixels.getTexture());
         screen_sprite.setPosition(first_mip.pixels.getSize() / 2.f);
         screen_sprite.setScale(first_mip.pixels.getSize() / 2.f);
         first_mip.canvas_tmp.clear({0, 0, 0, 0});
@@ -219,7 +219,7 @@ void Bloom3::process(Texture &source, Renderer &target)
         first_mip.canvas_tmp.drawSprite(screen_sprite, "gaussVert", DrawType::Dynamic);
         first_mip.canvas_tmp.drawAll();
 
-        // Sprite2 ss2(first_mip.pixels_tmp.getTexture());
+        // Sprite ss2(first_mip.pixels_tmp.getTexture());
         first_mip.canvas.clear({0, 0, 0, 0});
         screen_sprite.setTexture(first_mip.pixels_tmp.getTexture());
         first_mip.canvas.m_view.setCenter(screen_sprite.getPosition());
@@ -267,7 +267,7 @@ void Bloom3::process(Texture &source, Renderer &target)
 
     // writeTextureToFile("../", "testfile3.png", m_downsampled_pixels3);
 
-    Sprite2 ss;
+    Sprite ss;
     ss.m_color = {255, 255, 255, 255};
     target.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha};
     for (auto &mip : m_mips)
@@ -299,12 +299,12 @@ SmoothLight::SmoothLight(int width, int height, TextureOptions options)
       m_downsampler3(m_downsampled_pixels3),
       m_downsampler33(m_downsampled_pixels33)
 {
-    m_bloom_renderer1.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
-    m_bloom_renderer2.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_bloom_renderer2.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler3.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_downsampler3.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler33.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
+    m_bloom_renderer1.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
+    m_bloom_renderer2.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_bloom_renderer2.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler3.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_downsampler3.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler33.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
 
     m_downsampler3.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
     m_downsampler33.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
@@ -316,14 +316,14 @@ void SmoothLight::process(Texture &source, Renderer &target)
 
     if (!target.hasShader("combineLightBloom"))
     {
-        target.addShader("combineLightBloom", "../Resources/basicinstanced.vert", "../Resources/combineLightBloom.frag");
+        target.addShader("combineLightBloom", "basicinstanced.vert", "combineLightBloom.frag");
     }
 
     auto old_view = target.m_view;
     auto old_blend_factors = target.m_blend_factors;
 
     auto target_size = target.getTargetSize();
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
     m_downsampler3.m_view.setCenter(screen_sprite.getPosition().x, screen_sprite.getPosition().y);
@@ -380,7 +380,7 @@ void LightCombine::process(Texture &source, Renderer &target)
 
     if (!target.hasShader("combineLight"))
     {
-        target.addShader("combineLight", "../Resources/basicinstanced.vert", "../Resources/combineLight.frag");
+        target.addShader("combineLight", "basicinstanced.vert", "combineLight.frag");
     }
 
     auto old_view = target.m_view;
@@ -388,7 +388,7 @@ void LightCombine::process(Texture &source, Renderer &target)
 
     auto target_size = target.getTargetSize();
 
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
 
@@ -415,9 +415,9 @@ BloomSmoke::BloomSmoke(int width, int height)
       m_downsampler33(m_downsampled_pixels33)
 {
 
-    m_downsampler3.addShader("gaussHoriz", "../Resources/basicinstanced.vert", "../Resources/gaussHoriz.frag");
-    m_downsampler3.addShader("brightness", "../Resources/basicinstanced.vert", "../Resources/brightness.frag");
-    m_downsampler33.addShader("gaussVert", "../Resources/basicinstanced.vert", "../Resources/gaussVert.frag");
+    m_downsampler3.addShader("gaussHoriz", "basicinstanced.vert", "gaussHoriz.frag");
+    m_downsampler3.addShader("brightness", "basicinstanced.vert", "brightness.frag");
+    m_downsampler33.addShader("gaussVert", "basicinstanced.vert", "gaussVert.frag");
 
     m_downsampler3.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
     m_downsampler33.m_blend_factors = {bf::One, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
@@ -428,14 +428,14 @@ void BloomSmoke::process(Texture &source, Renderer &target)
 
     if (!target.hasShader("combineSmoke"))
     {
-        target.addShader("combineSmoke", "../Resources/basicinstanced.vert", "../Resources/combineSmoke.frag");
+        target.addShader("combineSmoke", "basicinstanced.vert", "combineSmoke.frag");
     }
 
     auto old_view = target.m_view;
     auto old_blend_factors = target.m_blend_factors;
 
     auto target_size = target.getTargetSize();
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size.x / 2.f, target_size.y / 2.f);
     screen_sprite.setScale(target_size.x / 2.f, target_size.y / 2.f);
 
@@ -490,8 +490,8 @@ EdgeDetect::EdgeDetect(int width, int height)
       m_vert_canvas(m_vert_pass),
       m_horiz_canvas(m_horiz_pass)
 {
-    m_vert_canvas.addShader("edgeDetectVert", "../Resources/basicinstanced.vert", "../Resources/edgeDetectVert.frag");
-    m_horiz_canvas.addShader("edgeDetectHoriz", "../Resources/basicinstanced.vert", "../Resources/edgeDetectHoriz.frag");
+    m_vert_canvas.addShader("edgeDetectVert", "basicinstanced.vert", "edgeDetectVert.frag");
+    m_horiz_canvas.addShader("edgeDetectHoriz", "basicinstanced.vert", "edgeDetectHoriz.frag");
 
     m_vert_canvas.m_blend_factors = {bf::SrcAlpha, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
     m_horiz_canvas.m_blend_factors = {bf::SrcAlpha, bf::OneMinusSrcAlpha, bf::One, bf::Zero};
@@ -500,7 +500,7 @@ void EdgeDetect::process(Texture &source, Renderer &target)
 {
     if (!target.hasShader("combineEdges"))
     {
-        target.addShader("combineEdges", "../Resources/basicinstanced.vert", "../Resources/combineEdges.frag");
+        target.addShader("combineEdges", "basicinstanced.vert", "combineEdges.frag");
     }
 
     auto old_view = target.m_view;
@@ -512,7 +512,7 @@ void EdgeDetect::process(Texture &source, Renderer &target)
     m_horiz_canvas.m_view.setCenter(target_size / 2.f);
     m_horiz_canvas.m_view.setSize(target_size);
 
-    Sprite2 screen_sprite(source);
+    Sprite screen_sprite(source);
     screen_sprite.setPosition(target_size / 2.f);
     screen_sprite.setScale(target_size / 2.f);
 

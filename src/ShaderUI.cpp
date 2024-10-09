@@ -53,7 +53,7 @@ UI::UI(Window &window, TextureHolder &textures,
     m_window_data[UIWindowType::Lua].is_active = true;
 }
 
-std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path shader_dir = "../Resources/")
+std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path shader_dir = "")
 {
     std::vector<std::string> shader_names;
     for (auto const &dir_entry : std::filesystem::directory_iterator{shader_dir})
@@ -258,7 +258,7 @@ void ShadersWindow::drawShaderSlot(ShaderSlot &slot)
     {
         if (ImGui::BeginListBox(texture_name.c_str(), shader_box_size))
         {
-            for (auto &[texture_identifier, texture_ptr] : m_textures.m_textures)
+            for (auto &[texture_identifier, texture_ptr] : m_textures.getTextures())
             {
                 const bool is_selected = (value.handle == texture_ptr->getHandle());
                 if (ImGui::Selectable(texture_identifier.c_str(), is_selected))
@@ -280,7 +280,7 @@ void ShadersWindow::drawShaderSlot(ShaderSlot &slot)
 
 void ShadersWindow::refresh()
 {
-    // std::filesystem::path path = "../Resources/";
+    // std::filesystem::path path = "";
     // auto shader_filenames = extractNamesInDirectory(path, ".frag");
 
     // std::vector<std::string> new_shader_paths;
@@ -307,7 +307,7 @@ void ShadersWindow::refresh()
 void ShadersWindow::draw()
 {
     {
-        std::filesystem::path path = "../Resources/";
+        std::filesystem::path path = "";
         auto names = extractNamesInDirectory(path, ".png");
 
         ImGui::Begin("Shader Manager");

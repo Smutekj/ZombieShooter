@@ -65,7 +65,7 @@ void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color co
     utils::Vector2f right_eye_pos1 = pos + utils::Vector2f{+radius * 0.2, radius * 0.4};
     utils::Vector2f right_eye_pos2 = pos + utils::Vector2f{+radius * 0.6, radius * 0.5};
 
-    // Sprite2 s();
+    // Sprite s();
     // canvas.drawCricleBatched(, 1.0, color, DrawType::Dynamic);
 }
 
@@ -143,7 +143,7 @@ void PlayerEntity::draw(LayersHolder &layers)
         m_vision_verts[vert_ind].tex_coord = {dr};     //! we use this information in a shader
         m_vision_verts[vert_ind].color = {1, 1, 1, 1}; //! we use this information in a shader
     }
-    m_vision_verts.m_shader2.setUniform2("u_max_radius", m_vision_radius);
+    m_vision_verts.m_shader->setUniform2("u_max_radius", m_vision_radius);
     light_canvas.drawVertices(m_vision_verts, DrawType::Dynamic);
 
     // light_canvas.drawCricleBatched(m_pos + m_vel*2.f, 50.f, Color{100,0,1,1.0});
@@ -434,11 +434,12 @@ void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
 
     if (type == ObjectType::Enemy)
     {
-        // auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
-        // dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
-        // dmg_text.m_lifetime = 5.f;
+        auto &dmg_text = GameWorld::getWorld().addVisualEffect<FloatingText>("Text");
+        dmg_text.setPosition(m_pos + utils::Vector2f{0.f, 10.f});
+        dmg_text.m_lifetime = 5.f;
     }
-};
+}
+
 void Projectile::onCreation()
 {
 }
@@ -470,7 +471,7 @@ void Projectile::draw(LayersHolder &layers)
 
     if (texture)
     {
-        Sprite2 bolt_sprite(*texture);
+        Sprite bolt_sprite(*texture);
         bolt_sprite.m_texture_handles[0] = 0; //.
         bolt_sprite.setPosition(m_pos);
         bolt_sprite.setRotation(m_angle);
@@ -917,7 +918,7 @@ void OrbitingShield::draw(LayersHolder &layers)
     auto &unit_canvas = layers.getCanvas("Unit");
     auto &particle_canvas = layers.getCanvas("Wall");
 
-    Sprite2 rect(*m_textures->get("bomb"));
+    Sprite rect(*m_textures->get("bomb"));
     rect.m_texture_handles[0] = 0;
     rect.setPosition(m_pos);
     rect.setRotation(dir2angle(m_vel));
@@ -961,7 +962,7 @@ void Shield::draw(LayersHolder &layers)
 {
     auto &unit_canvas = layers.getCanvas("Unit");
 
-    Sprite2 rect(*m_textures->get("bomb"));
+    Sprite rect(*m_textures->get("bomb"));
     rect.m_texture_handles[0] = 0;
     rect.setPosition(m_pos);
     rect.setRotation(utils::dir2angle(m_vel));
