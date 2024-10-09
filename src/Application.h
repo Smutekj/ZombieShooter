@@ -20,6 +20,7 @@
 #include <Font.h>
 
 #include "Shadows/VisibilityField.h"
+#include "Utils/Statistics.h"
 #include "Map.h"
 #include "Entities.h"
 #include "GameWorld.h"
@@ -33,21 +34,6 @@ namespace cdt{
 }
 
 
-struct Averager
-{
-    void addNumber(double num)
-    {
-        data.push_back(num);
-        if(data.size() >= averaging_interval)
-        {
-            data.pop_front();
-        }
-        avg = std::accumulate(data.begin(), data.end(), 0.) / data.size();
-    }
-    std::deque<double> data;
-    double avg = 0.;
-    int averaging_interval = 60;
-};
 
 void gameLoop(void *mainLoopArg);
 
@@ -145,8 +131,7 @@ private:
 
     std::shared_ptr<Font> m_font;
 
-    Averager m_avg_frame_time;
-
+    Statistics m_avg_frame_time;
 
 
 };
