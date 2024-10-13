@@ -743,16 +743,17 @@ void Application::drawUI(float dt)
 {
 
     auto old_view = m_window_renderer.m_view;
+    auto mouse_pos = m_window_renderer.getMouseInScreen();
 
     Text text;
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
     m_window_renderer.m_view.setSize(m_window.getSize());
-    text.setPosition(100, 0);
     text.setScale(1, 1);
     text.setFont(m_font.get());
-    text.setColor({255, 255, 255, 255});
     std::string text_test = "Frame time: ... " + std::to_string(m_avg_frame_time.avg);
     text.setText(text_test);
+    text.setColor({255, 255, 255, 255});
+    text.centerAround(mouse_pos);
     m_window_renderer.drawText(text, "Text", DrawType::Dynamic);
 
     Sprite health_bar(*m_textures.get("bomb"));

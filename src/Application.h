@@ -3,14 +3,6 @@
 #include <Window.h>
 #include <Shader.h>
 #include <Texture.h>
-#include "ShaderUI.h"
-
-#include <chrono>
-#include <vector>
-#include <numeric>
-#include <unordered_map>
-#include <memory>
-
 #include <Rectangle.h>
 #include <VertexArray.h>
 #include <View.h>
@@ -18,6 +10,14 @@
 #include <Renderer.h>
 #include <Particles.h>
 #include <Font.h>
+#include "ShaderUI.h"
+
+
+#include <chrono>
+#include <vector>
+#include <numeric>
+#include <unordered_map>
+#include <memory>
 
 #include "Shadows/VisibilityField.h"
 #include "Utils/Statistics.h"

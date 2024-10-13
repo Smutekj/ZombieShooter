@@ -53,7 +53,6 @@ GameWorld::GameWorld()
     try
     {
         m_logger = spdlog::basic_logger_mt("general", "logs/general.txt");
-        m_logger->info("PENIS");
         m_logger->flush_on(spdlog::level::info);
     }
     catch (const spdlog::spdlog_ex &ex)

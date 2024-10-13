@@ -4,13 +4,13 @@ include(FetchContent)
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     add_custom_target(
         BuildLua
-        COMMAND emmake make generic 
+        COMMAND emmake make linux 
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
     )
 else()
     add_custom_target(
         BuildLua
-        COMMAND make generic
+        COMMAND make linux
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
     )
 endif()
