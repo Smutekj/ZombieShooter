@@ -19,9 +19,9 @@
 
 namespace map
 {
-    constexpr int MAP_SIZE_X = 5000;
-    constexpr int MAP_SIZE_Y = 5000;
-    constexpr int MAP_GRID_CELLS_X = 50;
+    constexpr int MAP_SIZE_X = 1500;
+    constexpr int MAP_SIZE_Y = 1500;
+    constexpr int MAP_GRID_CELLS_X = 25;
     constexpr int MAP_GRID_CELLS_Y = MAP_GRID_CELLS_X;
 } //! namespace map
 

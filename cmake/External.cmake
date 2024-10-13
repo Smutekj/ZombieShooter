@@ -4,13 +4,13 @@ include(FetchContent)
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     add_custom_target(
         BuildLua
-        COMMAND emmake make linux 
+        COMMAND make generic  CC='emcc -s WASM=1' ### THE FLAG IS NECESSARY!!!!!!
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
     )
 else()
     add_custom_target(
         BuildLua
-        COMMAND make linux
+        COMMAND make generic
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
     )
 endif()
@@ -22,7 +22,7 @@ set_target_properties(LuaLib
         INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/external/lua/src/
         INTERFACE_COMPILE_DEFINITIONS "USING_LUA;LUA_STATIC"
 )
-add_dependencies(LuaLib BuildLua) # So that anyone linking against TheLib causes BuildTheLib to build first
+add_dependencies(LuaLib BuildLua) # So that anyone linking against LuaLib causes BuildLua to build first
 
 ### LUABridge 
 FetchContent_Declare(

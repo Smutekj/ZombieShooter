@@ -203,7 +203,7 @@ Application::Application(int width, int height) : m_window(width, height),
     auto &world = GameWorld::getWorld();
     for (int i = 0; i < 69; ++i)
     {
-        auto rand_pos = randomPosInBox({5, 5}, {0.95 * MAP_SIZE_X, 0.95 * MAP_SIZE_Y});
+        auto rand_pos = randomPosInBox({20, 20}, {0.9 * MAP_SIZE_X, 0.9 * MAP_SIZE_Y});
         auto map_cell = m_map->coordToCell(rand_pos);
         int rx = 2 + rand() % 4;
         int ry = 2 + rand() % 4;
@@ -797,7 +797,7 @@ void inline gameLoop(void *mainLoopArg)
     // auto tic = std::chrono::high_resolution_clock::now();
     Application *p_app = (Application *)mainLoopArg;
 
-    p_app->update(0.01666666);
+    p_app->update(0.02666666); //! big fucking kek
     p_app->handleInput();
 
     // Swap front/back framebuffers
