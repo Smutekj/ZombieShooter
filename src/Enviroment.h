@@ -30,7 +30,7 @@ public:
     Particles* getParticlesP(const std::string& name) ;
 
     void doScript(const std::string &script_name);
-    void loadFromScript(const std::string &script_name);
+    void loadFromScript();
 
     void setColor(const std::string &color_name, const Color &color)
     {
@@ -56,6 +56,7 @@ public:
 
 protected:
     std::string m_script_name = "testeffect.lua";
+    std::string m_effect_id = "consecration";
     std::unordered_map<std::string, Color> m_colors;
     std::unordered_map<std::string, ParticlesDrawData> m_particles_holder;
     std::function<void(LayersHolder&)> m_drawer;

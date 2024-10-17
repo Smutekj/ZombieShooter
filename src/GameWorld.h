@@ -269,10 +269,10 @@ std::shared_ptr<EntityType> GameWorld::addObject(const std::string name, Args...
 {
     // static_assert(std::is_base_of_v<EnviromentEffect, EffectType>());
     NewObjectData new_obj;
-    if(m_name2id.count(name) > 0)
-    {
-        return nullptr;
-    }
+    // if(m_name2id.count(name) > 0)
+    // {
+    //     return nullptr;
+    // }
     auto ptr_obj = std::make_shared<EntityType>(m_textures, args...);
     new_obj.p_object = ptr_obj;
     new_obj.name = name;

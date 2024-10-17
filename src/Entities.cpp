@@ -109,6 +109,20 @@ void PlayerEntity::update(float dt)
 
 void PlayerEntity::onCreation()
 {
+    if (LuaWrapper::loadScript("entitydied.lua") == LuaScriptStatus::Broken)
+    {
+        return;
+    }
+    auto lua = LuaWrapper::getSingleton();
+    auto on_creation = luabridge::getGlobal(lua->m_lua_state, "OnEnemyCreation");
+    try
+    {
+        on_creation(this, std::string{"player"});
+    }
+    catch (std::exception &e)
+    {
+        std::cout << "ERORR IN OnEnemyCreation: " << e.what() << " !\n";
+    }
 }
 void PlayerEntity::onDestruction() {}
 void PlayerEntity::draw(LayersHolder &layers)
@@ -213,23 +227,33 @@ Event::Event(TextureHolder &textures, std::string event_script_name)
     m_collision_shape = std::make_unique<Polygon>(8);
     setSize({20.f, 20.f});
 
-    if (LuaWrapper::loadScript(event_script_name) != LuaScriptStatus::Ok)
-    {
-        return;
-    }
+    // if (LuaWrapper::loadScript(event_script_name) != LuaScriptStatus::Ok)
+    // {
+    //     return;
+    // }
 }
 
 void Event::update(float dt)
 {
-    if (LuaWrapper::loadScript(m_script_name) != LuaScriptStatus::Ok)
-    {
-        return;
-    }
+    // if (LuaWrapper::loadScript(m_script_name) != LuaScriptStatus::Ok)
+    // {
+    //     return;
+    // }
+    auto lua = LuaWrapper::getSingleton();
 
     try
     {
-        auto update = luabridge::getGlobal(LuaWrapper::getSingleton()->m_lua_state, "EventUpdate");
-        update(this);
+        // auto event_table = getTable(lua->m_lua_state, "Events");
+        // assert(event_table.isTable());
+        // auto event_table2 = event_table.cast<std::unordered_map<std::string, luabridge::LuaRef>>();
+        // auto event = event_table2.at(m_script_name);
+        // if(!event.isTable())
+        // {
+        //     return;
+        // }
+        // auto event2 = castToMap(event);
+        // auto update = event2.at("update");
+        // update(this);
     }
     catch (std::exception &e)
     {
@@ -256,6 +280,9 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
     }
     auto lua = LuaWrapper::getSingleton();
 
+    auto event_table = getTable(lua->m_lua_state, "Events");
+    auto event2 = castToMap(event_table).at(m_script_name);
+    auto event = castToMap(event2);
     switch (obj.getType())
     {
     case ObjectType::Bullet:
@@ -263,7 +290,7 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
         auto bullet = static_cast<Projectile *>(&obj);
         try
         {
-            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventBulletCollision");
+            auto collider = event.at("bulletCol");
             collider(this, &obj);
         }
         catch (std::exception &e)
@@ -277,7 +304,7 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
         auto player = static_cast<PlayerEntity *>(&obj);
         try
         {
-            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventPlayerCollision");
+            auto collider = event.at("playerCol");
             collider(this, &obj);
         }
         catch (std::exception &e)
@@ -291,7 +318,7 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
         auto enemy = static_cast<Enemy *>(&obj);
         try
         {
-            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventEnemyCollision");
+            auto collider = event.at("enemyCol");
             collider(this, &obj);
         }
         catch (std::exception &e)
@@ -305,8 +332,7 @@ void Event::onCollisionWith(GameObject &obj, CollisionData &c_data)
         auto wall = static_cast<Wall *>(&obj);
         try
         {
-
-            auto collider = luabridge::getGlobal(lua->m_lua_state, "EventWallCollision");
+            auto collider = event.at("wallCol");
             collider(this, &obj);
         }
         catch (std::exception &e)
@@ -754,10 +780,10 @@ void Enemy::draw(LayersHolder &layers)
         std::cout << "ERROR IN EnemyDraw: " << e.what() << "\n";
     }
 
-    auto& canvas = layers.getCanvas("UI");
-    canvas.drawLineBatched(m_pos, m_target_pos, 2., {1,0,0,1});
-    canvas.drawLineBatched(m_pos, m_next_path, 2., {1,1,0,1});
-    canvas.drawLineBatched(m_next_path, m_next_next_path, 2., {0,1,0,1});
+    auto &canvas = layers.getCanvas("UI");
+    canvas.drawLineBatched(m_pos, m_target_pos, 2., {1, 0, 0, 1});
+    canvas.drawLineBatched(m_pos, m_next_path, 2., {1, 1, 0, 1});
+    canvas.drawLineBatched(m_next_path, m_next_next_path, 2., {0, 1, 0, 1});
 }
 
 void Enemy::avoidMeteors()
@@ -865,7 +891,7 @@ void Enemy::boidSteering()
             {
                 if (utils::dist(m_next_path, m_target_pos) < 2.f) //! if we approach destination
                 {
-                    m_vel *=0.5f;
+                    m_vel *= 0.5f;
                 }
                 else
                 {

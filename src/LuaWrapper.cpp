@@ -95,7 +95,7 @@ LuaScriptStatus LuaWrapper::loadScript(const std::string &script_name)
     std::filesystem::path path = getPathToScripts(script_name);
 
     auto lua = getSingleton();
-    if(!std::filesystem::exists(path))
+    if (!std::filesystem::exists(path))
     {
         return LuaScriptStatus::Broken; //! file does not exist
     }
@@ -224,51 +224,16 @@ static Enemy *createEnemy(lua_State *state)
     return static_cast<Enemy *>(new_obj.get());
 }
 
-static EnviromentEffect *createEffect(lua_State *state)
+static Event *createEvent(std::string event_id)
 {
-    int num_args = lua_gettop(state);
-
-    if (num_args != 2)
-    {
-        std::string msg = " OBJECT NOT CREATED! EXPECTED 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
-        spdlog::get("lua_logger")->error(msg);
-        lua_pushinteger(state, LUA_ERRRUN);
-        lua_error(state);
-        return nullptr;
-    }
-    std::string object_name = lua_tostring(state, 1);
-    std::string script_name = lua_tostring(state, 2);
-
-    auto& world = GameWorld::getWorld();
-
-    auto new_obj = GameWorld::getWorld().addObject<EnviromentEffect>(object_name, script_name);
-    // GameWorld::getWorld().update(0);
-
-    return static_cast<EnviromentEffect *>(new_obj.get());
-}
-
-static Event *createEvent(lua_State *state)
-{
-    int num_args = lua_gettop(state);
-
-    if (num_args != 1 || num_args != 2)
-    {
-        std::string msg = " OBJECT NOT CREATED! EXPECTED 1 OR 2 ARGUMENTS BUT GOT " + std::to_string(num_args);
-        spdlog::get("lua_logger")->error(msg);
-        lua_pushinteger(state, LUA_ERRRUN);
-        lua_error(state);
-        return nullptr;
-    }
-
-    std::string event_name = "Event";
-    std::string event_script = lua_tostring(state, 1);
-    if (num_args == 2)
-    {
-        event_name = lua_tostring(state, 2);
-    }
-
-    auto new_obj = GameWorld::getWorld().addObject<Event>(event_name, event_script);
+    auto new_obj = GameWorld::getWorld().addObject<Event>(event_id, event_id);
     return static_cast<Event *>(new_obj.get());
+}
+static EnviromentEffect *createEffect(std::string effect_id)
+{
+    std::cout << "EFFECT: " << effect_id << "\n"; 
+    auto new_obj = GameWorld::getWorld().addObject<EnviromentEffect>(effect_id, effect_id);
+    return static_cast<EnviromentEffect *>(new_obj.get());
 }
 
 static GameObject *createObject2(lua_State *state)
@@ -583,7 +548,7 @@ std::string getName(lua_State *state)
     int num_args = lua_gettop(state);
     if (num_args != 1)
     {
-        std::string msg = "Wrong number of arguments. Expected 1 but got: " + num_args;
+        std::string msg = "Wrong number of arguments. Expected 1 but got: " + std::to_string(num_args);
         spdlog::get("lua_logger")->error(msg);
     }
     int id = lua_tointeger(state, 1);
@@ -628,9 +593,9 @@ static void setVec4InShader(Shader &shader, const std::string &uniform_name, flo
     shader.setVec4(uniform_name, {x, y, z, w});
 }
 
-static std::vector<GameObject*> findNearsetNeighbours(const utils::Vector2f& center, float radius)
+static std::vector<GameObject *> findNearsetNeighbours(const utils::Vector2f &center, float radius)
 {
-    const auto& collision_system = GameWorld::getWorld().getCollider();
+    const auto &collision_system = GameWorld::getWorld().getCollider();
     auto r_min = center - utils::Vector2f{radius, radius};
     auto r_max = center + utils::Vector2f{radius, radius};
     auto objects = collision_system.findNearestObjects(ObjectType::Enemy, {r_min, r_max});
@@ -671,19 +636,20 @@ void LuaWrapper::initializeLuaFunctions()
         .addFunction("getShader", &LayersHolder::getShaderP)
         .endClass()
         .beginClass<Shader>("Shader")
-        .addFunction("setFloat",std::function<void(Shader*, const std::string&, float)>(
-            [](Shader* p_this, const std::string& name, float val){ p_this->setUniform2(name, val);}
-        ))
+        .addFunction("setFloat", std::function<void(Shader *, const std::string &, float)>(
+                                     [](Shader *p_this, const std::string &name, float val)
+                                     { p_this->setUniform2(name, val); }))
         .endClass()
         .beginClass<UniformType>("Uniform")
         .endClass()
         .beginClass<Renderer>("Renderer")
-        .addFunction("drawRectangle",  std::function<void(Renderer*, RectangleSimple&, const std::string&, Color)>(
-            [](Renderer* p_this, RectangleSimple& r, const std::string& shader_id, Color c){
-                 p_this->drawRectangle(r, c, shader_id, DrawType::Dynamic);}))
+        .addFunction("drawRectangle", std::function<void(Renderer *, RectangleSimple &, const std::string &, Color)>(
+                                          [](Renderer *p_this, RectangleSimple &r, const std::string &shader_id, Color c)
+                                          { p_this->drawRectangle(r, c, shader_id, DrawType::Dynamic); }))
         .addFunction("drawSprite", &Renderer::drawSpriteDynamic)
-        .addFunction("drawText", std::function<void(Renderer*, Text&, const std::string&)>(
-            [](Renderer* p_this, Text& text, const std::string& shader_id){ p_this->drawText(text, shader_id, DrawType::Dynamic);}))
+        .addFunction("drawText", std::function<void(Renderer *, Text &, const std::string &)>(
+                                     [](Renderer *p_this, Text &text, const std::string &shader_id)
+                                     { p_this->drawText(text, shader_id, DrawType::Dynamic); }))
         .addFunction("drawEllipse", &Renderer::drawEllipseBatched)
         .addFunction("drawLine", &Renderer::drawLineBatched)
         .addFunction("render", &Renderer::drawAll)
@@ -712,10 +678,14 @@ void LuaWrapper::initializeLuaFunctions()
         .addFunction("getPlayer", &getPlayer)
         .addFunction("getTexture", &getTexture)
         .addFunction("getFont", &getFont)
+        .addFunction("getMapSize", std::function<utils::Vector2i()>([]()
+                                                         {
+        auto &world = GameWorld::getWorld();
+        return utils::Vector2i{map::MAP_SIZE_X, map::MAP_SIZE_Y}; }))
         .addFunction("setVec2Shader", &setVec2InShader)
         .addFunction("setVec3Shader", &setVec3InShader)
         .addFunction("setVec4Shader", &setVec4InShader)
-        .addFunction("findEnemies",&findNearsetNeighbours);
+        .addFunction("findEnemies", &findNearsetNeighbours);
 
     luabridge::getGlobalNamespace(m_lua_state)
         .beginClass<Color>("Color")
@@ -755,9 +725,9 @@ void LuaWrapper::initializeLuaFunctions()
         .addConstructor<void (*)(std::string)>()
         .addProperty("color", &Text::getColor, &Text::setColor)
         .addProperty("string", &Text::getText, &Text::setText)
-        .addFunction("setFont", std::function<void(Text*, Font*)>(
-        [](Text* p_this, Font* p_font){if(p_this && p_font){ p_this->setFont(p_font);}}
-        ))
+        .addFunction("setFont", std::function<void(Text *, Font *)>(
+                                    [](Text *p_this, Font *p_font)
+                                    {if(p_this && p_font){ p_this->setFont(p_font);} }))
         .endClass();
 
     luabridge::getGlobalNamespace(m_lua_state)
@@ -826,7 +796,7 @@ void LuaWrapper::initializeLuaFunctions()
         .endClass();
 
     registerVector<Particle>(luabridge::getGlobalNamespace(m_lua_state), "ParticleVector");
-    registerVector<GameObject*>(luabridge::getGlobalNamespace(m_lua_state), "ObjectVector");
+    registerVector<GameObject *>(luabridge::getGlobalNamespace(m_lua_state), "ObjectVector");
 }
 
 //! \brief runs the command if it is registered

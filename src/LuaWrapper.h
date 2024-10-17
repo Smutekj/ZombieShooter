@@ -134,6 +134,7 @@ inline luabridge::LuaRef getTable(lua_State *state, const std::string& table_nam
     try
     {
         auto table_lua = luabridge::getGlobal(state, table_name.c_str());
+        assert(table_lua.isTable());
         return table_lua;
     }
     catch (std::exception &e)
@@ -141,4 +142,11 @@ inline luabridge::LuaRef getTable(lua_State *state, const std::string& table_nam
         std::cout << "ERROR IN getTable" << e.what() << "\n";
     }
     return luabridge::LuaRef{state};
+}
+
+
+
+inline std::unordered_map<std::string, luabridge::LuaRef> castToMap(luabridge::LuaRef& x)
+{
+    return x.cast<std::unordered_map<std::string, luabridge::LuaRef>>();
 }

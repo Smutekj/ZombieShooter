@@ -16,14 +16,14 @@ EnviromentEffect::EnviromentEffect(TextureHolder &textures)
     : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect)
 {
 }
-EnviromentEffect::EnviromentEffect(TextureHolder &textures, const std::string &script_name)
-    : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect), m_script_name(script_name)
+EnviromentEffect::EnviromentEffect(TextureHolder &textures, const std::string& effect_id)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::VisualEffect), m_effect_id(effect_id)
 {
-    auto status = LuaWrapper::loadScript(script_name);
-    if (status != LuaScriptStatus::Broken)
-    {
-        loadFromScript(script_name);
-    }
+    // auto status = LuaWrapper::loadScript(script_name);
+    // if (status != LuaScriptStatus::Broken)
+    // {
+        loadFromScript();
+    // }
     m_collision_shape = std::make_unique<Polygon>(4);
 }
 
@@ -272,7 +272,7 @@ void EnviromentEffect::update(float dt)
     }
     else
     {
-        loadFromScript(m_script_name);
+        loadFromScript();
     }
 }
 void EnviromentEffect::draw(LayersHolder &layers)
@@ -291,14 +291,17 @@ void EnviromentEffect::draw(LayersHolder &layers)
     }
 }
 
-void EnviromentEffect::loadFromScript(const std::string &script_name)
+void EnviromentEffect::loadFromScript()
 {
     auto lua = LuaWrapper::getSingleton();
 
-    auto data_table_penis = getTable(lua->m_lua_state, "Effect");
-    auto data_table = data_table_penis.cast<std::unordered_map<std::string, luabridge::LuaRef>>();
-
-    for (auto &[particles_name, p] : data_table)
+    auto data_table_effects = getTable(lua->m_lua_state, "Effects");
+    auto data_table = castToMap(data_table_effects);
+    if(!data_table.at(m_effect_id).isTable())
+    {
+        return;
+    }
+    for (auto &[particles_name, p] : castToMap(data_table.at(m_effect_id)))
     {
         auto particles_table = data_table.at(particles_name);
         if (particles_table.isTable())
@@ -310,7 +313,7 @@ void EnviromentEffect::loadFromScript(const std::string &script_name)
             auto emitter = particle_data.at("spawner");
             if (!(shader_id.isString() && layer_name.isString() && updater.isFunction() && emitter.isFunction()))
             {
-                std::cout << "Types are wrong ParticleTable in script: " << script_name << " in " << particles_name << "\n";
+                std::cout << "Types are wrong ParticleTable in script: " << m_effect_id << " in " << particles_name << "\n";
                 continue;
             }
 

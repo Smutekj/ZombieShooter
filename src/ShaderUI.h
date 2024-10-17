@@ -23,6 +23,7 @@ enum class UIWindowType
     Debug = 0,
     Shaders,
     Lua,
+    Scene,
     COUNT
 };
 
@@ -137,12 +138,34 @@ public:
     virtual void draw() override;
 private:
 
+    void drawSceneGraph();
+
 private:
     std::deque<std::string> m_command_history;
     std::string m_current_command = ""; 
     std::string m_script_name = ""; 
     std::string m_last_error_msg = "";
     std::string m_entered_name = "";
+    Vec2 m_coords = {0,0};
+    int m_selected_command_ind = 0; 
+    int m_selected_entity_id = 0; 
+};
+
+class SceneGraphWindow : public UIWindow
+{
+
+public:
+    SceneGraphWindow();
+
+    virtual ~SceneGraphWindow(){}
+    virtual void draw() override;
+private:
+
+    void drawSceneGraph();
+
+private:
+    std::string m_entered_name = "";
+    std::string m_filter = ".*";
     Vec2 m_coords = {0,0};
     int m_selected_command_ind = 0; 
     int m_selected_entity_id = 0; 
@@ -167,6 +190,7 @@ public:
     UI(Window &window, TextureHolder &textures, LayersHolder &layers,  Renderer& window_canvas);
 
     void showWindow();
+    void toggleActive(UIWindowType window_id);
     void draw(Window &window);
     void handleEvent(SDL_Event event);
     bool simulationRunning() const
@@ -206,6 +230,7 @@ public:
         return m_light_color;
     }
 
+
 private:
     int m_simulation_slot = 0;
     bool m_simulation_on = false;
@@ -217,8 +242,8 @@ private:
     Color m_background_color = {0, 0, 0, 1};
     Color m_layer_background = {0, 0, 0, 0};
     Color m_light_color = {0, 0, 0, 0};
-    std::unordered_map<UIWindowType, UIWindowData> m_window_data;
 
+    std::unordered_map<UIWindowType, UIWindowData> m_window_data;
     LayersHolder &m_layers;
     std::string m_selected_layer = "Wall";
 

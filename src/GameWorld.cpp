@@ -42,8 +42,16 @@ GameWorld::GameWorld()
         throw std::runtime_error("initialization of globals.lua not succesful!");
     }
     if (LuaWrapper::loadScript("Abilities/globals.lua") == LuaScriptStatus::Broken)
+    {   
+        throw std::runtime_error("initialization of Abilities/globals.lua not succesful!");
+    }
+    if (LuaWrapper::loadScript("Effects/globals.lua") == LuaScriptStatus::Broken)
     {
-        throw std::runtime_error("initialization of globals.lua not succesful!");
+        throw std::runtime_error("initialization of Effects/globals.lua not succesful!");
+    }
+    if (LuaWrapper::loadScript("Events/globals.lua") == LuaScriptStatus::Broken)
+    {
+        throw std::runtime_error("initialization of Events/globals.lua not succesful!");
     }
     if (LuaWrapper::loadScript("quests.lua") == LuaScriptStatus::Broken)
     {
@@ -155,6 +163,7 @@ void GameWorld::addQueuedEntities()
 
         //! THIS NEEDS TO BE FIRST!!!
         auto new_id = m_entities.addObject(new_object);
+        new_name += "#" + std::to_string(new_id); //! each name contains id.
 
         m_entities.at(new_id)->m_id = new_id;
         m_scene.addObject(new_object);
@@ -284,7 +293,7 @@ void GameWorld::update(float dt)
 
 void GameWorld::draw(LayersHolder &layers)
 {
-    auto player = get<PlayerEntity>("Player");
+    auto player = get<PlayerEntity>("Player#0");
     auto view = layers.getCanvas("Unit").m_view;
     auto r_min = player->getPosition() - view.getScale();
     auto r_max = player->getPosition() + view.getScale();
