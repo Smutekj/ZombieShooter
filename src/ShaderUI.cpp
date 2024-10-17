@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <variant>
+#include <regex>
 
 #include <Window.h>
 #include <FrameBuffer.h>
@@ -44,13 +45,17 @@ UI::UI(Window &window, TextureHolder &textures,
 
     auto shaders_window = std::make_unique<ShadersWindow>(textures, m_layers, window_canvas);
     auto lua_window = std::make_unique<LuaWindow>();
+    auto scene_window = std::make_unique<SceneGraphWindow>();
 
-    m_window_data[UIWindowType::Shaders].p_window = std::move(shaders_window);
-    m_window_data[UIWindowType::Shaders].name = "Shaders";
-    m_window_data[UIWindowType::Shaders].is_active = false;
+    // m_window_data[UIWindowType::Shaders].p_window = std::move(shaders_window);
+    // m_window_data[UIWindowType::Shaders].name = "Shaders";
+    // m_window_data[UIWindowType::Shaders].is_active = false;
     m_window_data[UIWindowType::Lua].p_window = std::move(lua_window);
     m_window_data[UIWindowType::Lua].name = "Lua";
     m_window_data[UIWindowType::Lua].is_active = true;
+    m_window_data[UIWindowType::Scene].p_window = std::move(scene_window);
+    m_window_data[UIWindowType::Scene].name = "Scene";
+    m_window_data[UIWindowType::Scene].is_active = false;
 }
 
 std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path shader_dir = "")
@@ -71,8 +76,7 @@ ShadersWindow::ShadersWindow(TextureHolder &textures, LayersHolder &layers, Rend
     for (auto &[id, shader] : GameWorld::getWorld().m_shaders.getShaders())
     {
         m_shader_slots.emplace_back(*shader, id);
-    }
-    ;
+    };
 }
 
 LuaWindow::LuaWindow()
@@ -80,55 +84,33 @@ LuaWindow::LuaWindow()
 {
     m_current_command.reserve(200);
     m_script_name.reserve(200);
+}
+SceneGraphWindow::SceneGraphWindow()
+    : UIWindow("Scene")
+{
     m_entered_name.reserve(200);
 }
 
-void LuaWindow::draw()
+
+
+void SceneGraphWindow::drawSceneGraph()
 {
-    ImGui::Begin("Lua");
-
-    ImGuiInputTextFlags flags = ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue;
-
-    if (ImGui::InputText("Command", m_current_command.data(), 200, flags))
-    {
-        auto lua = LuaWrapper::getSingleton();
-        if (!lua->doString(m_current_command.c_str()))
-        {
-            m_last_error_msg = lua->getLastError();
-        }
-        else
-        {
-            m_last_error_msg = "";
-        }
-        //! add command to history and remove old commands
-        m_command_history.push_back(m_current_command);
-        if (m_command_history.size() > 20)
-        {
-            m_command_history.pop_front();
-        }
-    }
-     if (ImGui::InputText("Script", m_script_name.data(), 200, flags))
-    {
-        auto lua = LuaWrapper::getSingleton();
-        if (!lua->doFile(m_script_name.c_str()))
-        {
-            m_last_error_msg = lua->getLastError();
-        }
-    }
-
     auto &scene = GameWorld::getWorld().m_scene;
     for (auto root_id : scene.m_roots)
     {
         std::queue<int> to_visit;
         to_visit.push(root_id);
-        while (!to_visit.empty())
+        while (!to_visit.empty()) 
         {
             auto current_id = to_visit.front();
             auto &current = scene.m_nodes.at(current_id);
             to_visit.pop();
             assert(current.p_object);
             auto node_name = GameWorld::getWorld().getName(current.p_object->getId());
-
+            if(!std::regex_match(node_name, std::regex{m_filter}))
+            {
+                continue;
+            }
             bool opened = ImGui::TreeNode(node_name.c_str());
             ImGui::SameLine();
             bool selected = false;
@@ -153,6 +135,54 @@ void LuaWindow::draw()
             }
         }
     }
+
+}
+
+void SceneGraphWindow::draw()
+{
+    ImGui::Begin("Scene");
+
+    if(ImGui::InputText("filter: ", m_filter.data(), 200))
+    {
+
+    }
+    // drawSceneGraph();
+    ImGui::End();
+
+}
+void LuaWindow::draw()
+{
+    ImGui::Begin("Lua");
+
+    ImGuiInputTextFlags flags = ImGuiInputTextFlags_::ImGuiInputTextFlags_EnterReturnsTrue;
+
+    if (ImGui::InputText("Command", m_current_command.data(), 200, flags))
+    {
+        auto lua = LuaWrapper::getSingleton();
+        if (!lua->doString(m_current_command.c_str()))
+        {
+            m_last_error_msg = lua->getLastError();
+        }
+        else
+        {
+            m_last_error_msg = "";
+        }
+        //! add command to history and remove old commands
+        m_command_history.push_back(m_current_command);
+        if (m_command_history.size() > 20)
+        {
+            m_command_history.pop_front();
+        }
+    }
+    if (ImGui::InputText("Script", m_script_name.data(), 200, flags))
+    {
+        auto lua = LuaWrapper::getSingleton();
+        if (!lua->doFile(m_script_name.c_str()))
+        {
+            m_last_error_msg = lua->getLastError();
+        }
+    }
+
     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
     ImGui::Text("%s", m_last_error_msg.c_str());
     ImGui::PopStyleColor();
@@ -350,6 +380,15 @@ void UI::showWindow()
 {
 }
 
+void UI::toggleActive(UIWindowType window_id)
+{
+    if (m_window_data.count(window_id) > 0)
+    {
+        auto active_flag = m_window_data.at(window_id).is_active;
+        m_window_data.at(window_id).is_active = !active_flag;
+    }
+}
+
 void UI::draw(Window &window)
 {
 
@@ -357,30 +396,19 @@ void UI::draw(Window &window)
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-
     // bool show_demo_window = true;
     // if (show_demo_window)
     //     ImGui::ShowDemoWindow(&show_demo_window);
+    
+    // ImGui::Begin("Control Panel"); // Create a window called "Hello, world!" and append into it.
+    // for (auto &[type, data] : m_window_data)
+    // {
+    //     if (ImGui::Button(data.name.c_str()))
+    //         data.is_active = !data.is_active;
+    // }
 
-    std::vector<UIWindowType> active_windows;
-    ImGui::Begin("Control Panel"); // Create a window called "Hello, world!" and append into it.
-    for (auto &[type, data] : m_window_data)
-    {
-        if (ImGui::Button(data.name.c_str()))
-            data.is_active = !data.is_active;
-    }
 
-    ImGui::Begin("Colors");
-
-    ImGui::InputFloat4("Init Color", &m_particle_init_color.r);
-    ImGui::InputFloat4("End Color", &m_particle_end_color.r);
-    ImGui::InputFloat4("BackgRound", &m_background_color.r);
-    ImGui::InputFloat4("Light", &m_light_color.r);
-
-    ImGui::InputText("Selected Layer:", m_selected_layer.data(), 10);
-
-    ImGui::ColorPicker4("Background:", &m_layer_background.r);
-
+    ImGui::Begin("Layers");
     if (m_layers.hasLayer(m_selected_layer))
     {
         auto p_layer = m_layers.getLayer(m_selected_layer);
@@ -390,9 +418,6 @@ void UI::draw(Window &window)
         }
         p_layer->setBackground(m_layer_background);
     }
-
-    ImGui::End();
-
     ImGui::End();
 
     for (auto &[type, window_data] : m_window_data)
