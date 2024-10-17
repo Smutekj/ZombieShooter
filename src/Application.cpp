@@ -137,7 +137,7 @@ void updateTriangulation(cdt::Triangulation<cdt::Vector2i> &cdt, MapGridDiagonal
     GameWorld::getWorld().getPathFinder().update();
 
     //! update vision fields
-    auto player = GameWorld::getWorld().get<PlayerEntity>("Player");
+    auto player = GameWorld::getWorld().get<PlayerEntity>("Player#0");
     player->m_vision.onTriangulationChange();
 }
 
@@ -277,11 +277,6 @@ void Application::handleInput()
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
-        m_ui->handleEvent(event);
-        if (imgui_io.WantCaptureMouse)
-        {
-            continue;
-        }
         switch (event.type)
         {
         case SDL_KEYDOWN:
@@ -310,13 +305,15 @@ void Application::handleInput()
         default:
             break;
         }
+        m_ui->handleEvent(event);
     }
 }
 
 void Application::onKeyPress(SDL_Keycode key)
 {
     auto mouse_pos = m_window_renderer.getMouseInWorld();
-
+    std::cout << "KEY PRESSED  !!!\n";
+    
     switch (key)
     {
     case SDLK_a:
@@ -358,7 +355,6 @@ void Application::onWheelMove(SDL_MouseWheelEvent event)
     }
     else if (event.preciseY > 0)
     {
-
         m_window_renderer.m_view.zoom(1. / 0.95f);
     }
 }
@@ -482,6 +478,9 @@ void Application::onKeyRelease(SDL_Keycode key)
     {
     case SDLK_a:
         m_is_turning_left = false;
+        break;
+    case SDLK_BACKQUOTE:
+        m_ui->toggleActive(UIWindowType::Lua); //! toggle console
         break;
     case SDLK_e:
         m_is_moving_right = false;
@@ -632,7 +631,7 @@ void Application::update(float dt = 0.016f)
     }
 
     auto &world = GameWorld::getWorld();
-    auto p_player = world.get<PlayerEntity>("Player");
+    auto p_player = world.get<PlayerEntity>("Player#0");
     if (p_player)
     {
 
