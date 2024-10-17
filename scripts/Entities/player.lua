@@ -12,6 +12,8 @@ PlayerData.initialize = function(player)
     Entity2Abilities[player.id][FireBoltAbility.spell_id] = FireBoltAbility;
     Entity2Abilities[player.id][BasicAttackAbility.spell_id] = BasicAttackAbility;
     Entity2Abilities[player.id][FrostBoltAbility.spell_id] = FrostBoltAbility;
+    Entity2Abilities[player.id][ConsecrationAbility.spell_id] = ConsecrationAbility;
+    print("HI")
 end
 
 local function rotate(vec, angle)
@@ -58,3 +60,5 @@ function DrawPlayer(player, layers) --object is the c++ passed function
 
     drawAgent(player, layers);
 end
+
+EnemyData["player"] = PlayerData

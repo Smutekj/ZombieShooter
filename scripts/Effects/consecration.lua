@@ -89,7 +89,7 @@ Particles2 =
     lifetime = 2.,
 };
 
-Effect = {}
+local Effect = {}
 -- Effect["Particles1"] = Particles1;
 -- Effect["Particles2"] = Particles2;
 
@@ -111,3 +111,5 @@ Effect.Drawer = function(effect, layers)
     local eye_color = Color(10, 0, 0, 1); 
     drawTheThing(effect.pos, layers, 10.);
 end
+
+Effects["consecration"] = Effect;

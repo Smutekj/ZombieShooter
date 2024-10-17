@@ -1,36 +1,33 @@
+ConsecrationAbility = { spell_id = 3, cooldown = 25, cast_time = 1.,timer = 0, name = "consecration"}
 
-local function randVec()
-    local rand_angle = math.random() * 2. * math.pi;
-    return Vec(math.cos(rand_angle), math.sin(rand_angle));
-end
+ConsecrationAbility.onUse = function (performer, target)
 
-local function randVec(size)
-    local rand_angle = math.random() * 2. * math.pi;
-    local result = Vec(0, 0);
-    result.x = size * math.cos(rand_angle);
-    result.y = size * math.sin(rand_angle);
-    return result;
-end
+    -- check Cooldowns
+    if GlobalCooldowns[performer.id] > 0.001 then
+        return;
+    end
+    if Entity2Abilities[performer.id][ConsecrationAbility.spell_id].timer > 0.001 then
+        return;
+    end
 
-Effect = {}
--- Effect["Particles1"] = Particles1;
--- Effect["Particles2"] = Particles2;
+    print(Events["consecration"].timer)
 
-local function drawTheThing(position, layers, radius)
-    local thickness = radius / 10.;
-    local prev_pos = Vec(position.x + radius, position.y);
+    local ev = createEvent("consecration");
+    local eff = createEffect("consecration");
 
-    local texture = getTexture("coin");
-    local sprite = Sprite();
-    sprite.setTexture(sprite, 0, texture);
-    sprite.pos = position;
-    sprite.scale = Vec(200., 200.);
-    layers.drawSprite(layers, "Wall", sprite, "consecration");
+    ev.x = performer.x;
+    ev.y = performer.y;
+    ev.owner = performer.id;
+    ev.scale = Vec(25, 25);
+    eff.x = performer.x;
+    eff.y = performer.y;
+    eff.owner = performer.id;
+    eff.scale = Vec(25, 25);
+    setPosition("consecration", mouse_pos.x, mouse_pos.y);
 
-end
 
-Effect.Drawer = function(effect, layers)
-    local c = Color(1, 0, 0, 1);
-    local eye_color = Color(10, 0, 0, 1); 
-    drawTheThing(effect.pos, layers, 10.);
+
+    GlobalCooldowns[performer.id] = 2.; -- reset cooldown
+    Entity2Abilities[performer.id][ConsecrationAbility.spell_id].timer = ConsecrationAbility.cooldown;
+
 end
