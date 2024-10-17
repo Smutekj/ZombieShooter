@@ -4,12 +4,15 @@ include(FetchContent)
 if( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     add_custom_target(
         BuildLua
-        COMMAND make generic  CC='emcc -s WASM=1' ### THE FLAG IS NECESSARY!!!!!!
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
+        COMMAND emmake make clean 
+        COMMAND emmake make generic CC='emcc -s WASM=1' ### THE FLAG IS NECESSARY!!!!!!
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua
     )
 else()
+    message("HELLOMYFREIND\n\n\n")
     add_custom_target(
         BuildLua
+        COMMAND make clean
         COMMAND make generic
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/external/lua/src/
     )
@@ -57,5 +60,5 @@ FetchContent_MakeAvailable(CDT)
 # )
 # FetchContent_MakeAvailable(boost)
 
-find_package(Freetype REQUIRED)
+# find_package(Freetype REQUIRED)
 # find_package(Boost REQUIRED)

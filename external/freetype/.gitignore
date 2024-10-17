@@ -1,0 +1,7 @@
+.gitattributes
+
+*.so
+*.o
+*.a
+
+objs
