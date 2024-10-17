@@ -560,7 +560,7 @@ void Application::changeShield()
     auto &world = GameWorld::getWorld();
     world.destroyObject(world.getIdOf("Shield"));
     world.update(0);
-    auto shield = world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
+    auto shield = world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player#0"));
 }
 
 View m_default_view;
@@ -572,7 +572,7 @@ void Application::moveView(utils::Vector2f dr, Renderer &target)
     auto new_view_center = old_view_center - (dr);
     view.setCenter(new_view_center.x, new_view_center.y);
 
-    auto player = GameWorld::getWorld().get<PlayerEntity>("Player");
+    auto player = GameWorld::getWorld().get<PlayerEntity>("Player#0");
     if (!player)
     {
         return;
