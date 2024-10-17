@@ -2,8 +2,9 @@
 for i = 1, 5 do -- creates enemies at random position around the map
     local name = "E" .. tostring(i);
     local enemy = createEnemy(name);
-    local new_pos = Vec(2500, 2500) + randVec(math.random() * 2500.);
-    local new_target = Vec(2500, 2500) + randVec(math.random() * 2500.);
+    local map_size = getMapSize();
+    local new_pos = Vec(map_size.x, map_size.y) + randVec(math.random() * map_size.x*0.95);
+    local new_target = Vec(map_size.x, map_size.y) + randVec(math.random() * map_size.x*0.95);
     print(new_pos.x, new_pos.y)
     enemy.pos = new_pos;
     enemy.target_pos = new_target;
