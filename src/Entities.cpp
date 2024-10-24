@@ -36,14 +36,6 @@ namespace cdt
     template class Triangulation<utils::Vector2f>;
 }
 
-inline void truncate(utils::Vector2f &vec, float max_value)
-{
-    auto speed = norm(vec);
-    if (speed > max_value)
-    {
-        vec *= max_value / speed;
-    }
-}
 void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color color, Color eye_color = {1, 0, 0, 1})
 {
     radius /= std::sqrt(2.f);
@@ -638,14 +630,14 @@ void Enemy::update(float dt)
 
     boidSteering();
 
-    truncate(m_acc, max_acc);
+    utils::truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
     if (norm2(m_vel) > 0.000001)
     {
         m_angle = dir2angle(m_vel);
     }
 
-    truncate(m_vel, max_vel);
+    utils::truncate(m_vel, max_vel);
     m_pos += (m_impulse)*dt;
     if (m_health < 0.f)
     {
@@ -906,7 +898,7 @@ void Enemy::boidSteering()
     }
 
     m_acc += (scatter_force + align_force + seek_force + cohesion_force);
-    truncate(m_acc, max_acc);
+    utils::truncate(m_acc, max_acc);
 }
 
 OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
