@@ -5,7 +5,6 @@ EnemyData.enemy1.initialize = function(enemy)
     print(Entity2Abilities[enemy.id]);
 
     Entity2Abilities[enemy.id][FireBoltAbility.spell_id] = FireBoltAbility;
-    Entity2Abilities[enemy.id][MeleeAttack.spell_id] = MeleeAttack;
     -- Entity2Draw[enemy.id] = ;
     print("INITIALIZING ENEMY!!!");
 end
@@ -19,13 +18,12 @@ local function drawAgent(enemy, layers, radius, color, eye_color)
     sprite.scale = Vec(15., 15.);
 
     sprite.angle = enemy.angle;
-    -- local wtf = ColorByte(255,0,0,255);
-    if enemy.state == AttackState.ATTACKING then
+    if enemy.state == ATTACKING then
         sprite.color = ColorByte(255,0,0,255);
-    elseif enemy.state ==  AttackState.CHASING then
+    elseif enemy.state == CHASING then
         sprite.color = ColorByte(255,100,0,255);
     else
-        sprite.color =  ColorByte(0,255,0,255);
+        sprite.color = ColorByte(255,255,0,255);
     end
 
     layers.drawSprite(layers, "Unit", sprite, "basicagent");
@@ -35,9 +33,9 @@ local function drawAgent(enemy, layers, radius, color, eye_color)
     vision_circle.pos = enemy.pos;
     vision_circle.scale = Vec(EnemyData.enemy1.vision_range, EnemyData.enemy1.vision_range);
     vision_circle.angle = enemy.angle;
-    --  layers.drawSprite(layers, "Wall", vision_circle, "circle");
-    --   vision_circle.scale = Vec(EnemyData.enemy1.attack_range, EnemyData.enemy1.attack_range);
-    --   layers.drawSprite(layers, "Wall", vision_circle, "circle");
+     -- layers.drawSprite(layers, "Wall", vision_circle, "circle");
+      -- vision_circle.scale = Vec(EnemyData.enemy1.attack_range, EnemyData.enemy1.attack_range);
+      -- layers.drawSprite(layers, "Wall", vision_circle, "circle");
 end
 
 

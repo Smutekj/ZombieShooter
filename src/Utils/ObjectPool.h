@@ -93,6 +93,9 @@ public:
             free_inds.insert(i);
         }
         entity2ind.fill(-1);
+        objects.reserve(MAX_OBJECTS);
+        object2entity.reserve(MAX_OBJECTS);
+        
     }
 
     template <class T>

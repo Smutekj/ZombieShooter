@@ -1,6 +1,19 @@
-PATROLING = 0
-CHASING = 1
-ATTACKING = 2
+AttackState = {
+    PATROLING = 0,
+    CHASING = 1,
+    ATTACKING = 2,
+};
+AIStates = { "PATROLING", "CHASING", "ATTACKING" };
+
+
+MotionState = {
+    ATTACKING = 0,
+    CASTING = 1,
+    CHASING = 2,
+    RUNNING = 3,
+    WALKING = 4,
+    STANDING = 5,
+};
 
 local attack_range = 300
 local vision_range = 500
@@ -47,10 +60,12 @@ local function onAttack(enemy)
     -- timer = timer + 1;
     -- if timer > 100 then
     --     timer = 0;
-    if inRange(enemy, target, attack_range) then
-        Entity2Abilities[enemy.id][FireBoltAbility.spell_id].onUse(enemy, target);
+    local selected_ability_id = Entity2SelectedAbility[enemy.id];
+    if inRange(enemy, target, Entity2Abilities[enemy.id][selected_ability_id].range) then
+        Entity2Abilities[enemy.id][selected_ability_id].onUse(enemy, target);
     else
-        enemy.state = CHASING;
+        enemy.state = AttackState.CHASING;
+        enemy.motion_state = MotionState.RUNNING;
     end
     -- end
     -- Timers[enemy.id] = timer;
@@ -59,21 +74,23 @@ end
 
 local function onChase(enemy)
     if enemy.target == nil then -- don't chase when no target exists
-        enemy.state = PATROLING;
+        enemy.state = AttackState.PATROLING;
+        enemy.motion_state = MotionState.WALKING;
         return
     end
     local target = enemy.target;
 
-    if ChaseTimers[enemy.id] > 5 then -- each 5 seconds check if target is in range
+    if ChaseTimers[enemy.id] > 5 then                    -- each 5 seconds check if target is in range
         ChaseTimers[enemy.id] = 0;
         if not inRange(enemy, target, vision_range) then -- if out of vision we stop chasing
-            enemy.state = PATROLING;
+            enemy.state = AttackState.PATROLING;
+            enemy.motion_state = MotionState.WALKING;
             enemy.target = nil
             return;
         elseif inRange(enemy, target, attack_range) then
-            enemy.state = ATTACKING;
-            enemy.vel.x = 0;
-            enemy.vel.y = 0;
+            enemy.state = AttackState.ATTACKING;
+            enemy.vel.x = enemy.vel.x * 0.5;
+            enemy.vel.y = enemy.vel.y * 0.5;
         end
     end
 end
@@ -85,33 +102,30 @@ end
 local function onPatrol(enemy)
     if not (enemy.target == nil) then
         if inRange(enemy, enemy.target, vision_range) then
-            enemy.state = CHASING
+            enemy.state = AttackState.CHASING
+            enemy.motion_state = MotionState.RUNNING
             return;
         end
     end
-    -- print("HI")
-    -- print("enemy pos: " .. enemy.target_pos.x, enemy.target_pos.y);
     if dist(enemy.target_pos, enemy.pos) < 50. then
         local n_attempts = 0;
         local new_pos = enemy.target_pos;
         repeat
             local rand_dr = randVec(500.);
-            -- print(rand_dr.x, rand_dr.y)
             new_pos = enemy.target_pos + rand_dr;
             n_attempts = n_attempts + 1;
         until n_attempts < 200 or isInMap(new_pos)
 
         if isInMap(new_pos) then
             enemy.target_pos = new_pos;
-            -- print(enemy.target_pos.y)
         end
     end
-
-    local player = getObject("Player");
-    -- print(dist(player.pos, enemy.pos))
+    local player = getObject("Player#0");
     if inRange(enemy, player, vision_range) then
-        enemy.state = CHASING
+        enemy.state = AttackState.CHASING
+        enemy.motion_state = MotionState.RUNNING
         enemy.target = player;
+        onChase(enemy);
         return;
     end
 end
@@ -121,13 +135,13 @@ local function isempty(s)
 end
 
 local function updateFSM(enemy)
-    if enemy.state == PATROLING then
+    if enemy.state == AttackState.PATROLING then
         onPatrol(enemy);
         return;
-    elseif enemy.state == ATTACKING then
+    elseif enemy.state == AttackState.ATTACKING then
         onAttack(enemy);
         return;
-    elseif enemy.state == CHASING then
+    elseif enemy.state == AttackState.CHASING then
         onChase(enemy);
         return;
     else
@@ -135,22 +149,14 @@ local function updateFSM(enemy)
     end
 end
 
-AIStates = { "PATROLING", "CHASING", "ATTACKING" };
 
 function updateAI(enemy) --object is the c++ passed function
     if (isempty(Time)) then
         Time = 0;
     end
-    -- print("ID: " .. enemy.id .. " pos: " .. enemy.pos.x .. " " .. enemy.pos.y)
     Time = Time + 1;
     enemy.max_acc = 1000.;
+    -- print("ID: " .. enemy.id .. " pos: " .. enemy.pos.x .. " " .. enemy.pos.y)
     -- print("Enemy with ID: " .. enemy.id .. " is: " .. AIStates[enemy.state + 1])
     updateFSM(enemy);
-
-    -- local e = getObject("E4");
-    -- print(e.pos.x, e.pos.y)
-    -- local e = getObject("E48");
-    -- print(e.target_pos.x, e.target_pos.y)
-    -- print(Time)
 end
-

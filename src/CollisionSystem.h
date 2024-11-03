@@ -79,6 +79,7 @@ namespace Collisions
         std::vector<GameObject *> findNearestObjects(ObjectType type, AABB colllision_rect) const;
         std::vector<GameObject *> findNearestObjects(AABB colllision_rect) const;
         utils::Vector2f findClosestIntesection(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length) ;
+        GameObject* findClosestObject(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length) ;
 
     private:
         void narrowPhase(const std::vector<std::pair<int, int>> &colliding_pairs);

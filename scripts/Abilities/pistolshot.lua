@@ -1,6 +1,6 @@
 
 
-PistolShotAbility = { spell_id = 2, cooldown = 0.5, cast_time = 0.,timer = 0, name = "pistolshot"}
+PistolShotAbility = { spell_id = 4, cooldown = 0.5, cast_time = 0.,timer = 0, name = "pistolshot"}
 
 PistolShotAbility.onUse = function (performer, target)
 

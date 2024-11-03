@@ -30,8 +30,9 @@ struct CollisionData
 
 enum class ObjectType
 {
-    Enemy,
+    Enemy = 0,
     Bullet,
+    Bullet2,
     Player,
     Wall,
     Orbiter,
@@ -67,8 +68,8 @@ class GameObject
 {
 
 public:
-    GameObject(GameObject& left)
-    : m_textures(left.m_textures)
+    GameObject(GameObject &left)
+        : m_textures(left.m_textures)
     {
         m_collision_shape = std::move(left.m_collision_shape);
     }
@@ -77,7 +78,7 @@ public:
 
     virtual void update(float dt) = 0;
     virtual void onCreation() = 0;
-    virtual void onDestruction() {m_on_destruction_callback(m_id, m_type);}
+    virtual void onDestruction() { m_on_destruction_callback(m_id, m_type); }
     virtual void draw(LayersHolder &layers) = 0;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) = 0;
     virtual ~GameObject() {}
@@ -88,56 +89,94 @@ public:
     void updateAll(float dt);
 
     const utils::Vector2f &getPosition() const;
-    void setX(float x) ;
-    void setY(float y) ;
+    void setX(float x);
+    void setY(float y);
     float getX() const;
     float getY() const;
-    void setTarget(GameObject* target);
-    GameObject* getTarget()const;
+    void setTarget(GameObject *target);
+    GameObject *getTarget() const;
     void setPosition(utils::Vector2f new_position);
     void move(utils::Vector2f by);
 
     float getAngle() const;
     void setAngle(float angle);
-    
+
     bool collides() const;
     Polygon &getCollisionShape();
-    
-    bool doesPhysics()const;
+
+    bool doesPhysics() const;
     RigidBody &getRigidBody();
-    
+
     int getId() const;
-    const ObjectType& getType() const;
-    
+    const ObjectType &getType() const;
+
     void setSize(utils::Vector2f size);
     utils::Vector2f getSize() const;
 
-public:
+    void setHp(float new_hp)
+    {
+        if (m_health_comp)
+        {
+            m_health_comp->m_health = new_hp;
+        }
+    }
 
+    float getHp() const
+    {
+        if (m_health_comp)
+        {
+            return m_health_comp->m_health;
+        }
+        return 0;
+    }
+    void setMaxHp(float new_hp)
+    {
+        if (m_health_comp)
+        {
+            m_health_comp->m_max_health = new_hp;
+        }
+    }
+
+    float getMaxHp() const
+    {
+        if (m_health_comp)
+        {
+            return m_health_comp->m_max_health;
+        }
+        return -1;
+    }
+
+public:
     utils::Vector2f m_pos;
     utils::Vector2f m_target_pos;
-    GameObject* m_target = nullptr;
-    
+    GameObject *m_target = nullptr;
+
     int m_id;
     Transform m_transform;
     utils::Vector2f m_vel = {0, 0};
     std::string m_name = "DefaultName";
 
 protected:
-    TextureHolder* m_textures;
+    TextureHolder *m_textures;
     GameWorld *m_world;
-    
+
+    struct HitPointData
+    {
+        float m_health = 100.;
+        float m_max_health = 100.;
+        float m_hp_regen = 1.;
+    };
+
     std::unique_ptr<Polygon> m_collision_shape = nullptr;
     std::unique_ptr<RigidBody> m_rigid_body = nullptr;
-    
+    std::unique_ptr<HitPointData> m_health_comp = nullptr;
+
     utils::Vector2f m_size = {1, 1};
     float m_angle = 0;
-    
+
     bool m_is_dead = false;
-    
 
 private:
-
-    std::function<void(int, ObjectType)> m_on_destruction_callback = [](int, ObjectType){};
+    std::function<void(int, ObjectType)> m_on_destruction_callback = [](int, ObjectType) {};
     ObjectType m_type;
 };

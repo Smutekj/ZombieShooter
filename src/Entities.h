@@ -47,6 +47,40 @@ enum class DisabilityState
 //     std::array
 // };
 
+enum class WeaponType
+{
+    Pistol,
+    ShotGun,
+    MachineGun,
+    // RocketLauncher,
+    // Grenade,
+    // LaserGun,
+};
+
+struct WeaponData
+{
+    float m_shoot_cooldown_curr = 0.;
+    float m_shoot_cooldown = 0.2;
+
+    float m_reload_time_curr = 0.;
+    float m_reload_time = 2.f;
+
+    float m_heat_curr = 0.;
+    float m_heat_max = 1.f;
+
+    float m_range = 250.f;
+    float m_spread = 0.5;
+
+    float m_dmg = 2.f;
+};
+
+namespace Weapons
+{
+    static WeaponData s_pistol_data = {0, 0.35, 0, 1, 0., 1., 550., 0.5, 2.};
+    static WeaponData s_shotgun_data = {0, 1.0, 0, 2, 0., 1., 150., 0.5, 6.};
+    static WeaponData s_machinegun_data = {0, 0.1, 0, 2, 0., 1., 350., 0.5, 4.};
+}
+
 class Enemy;
 class PlayerEntity : public GameObject
 {
@@ -65,26 +99,44 @@ public:
     void setMaxSpeed(float max_speed);
     float getMaxSpeed() const;
 
+    void shootWeapon();
+    void switchWeaponNext();
+    void switchWeaponPrev();
+
 private:
+    void shootBullet(utils::Vector2f from, float angle_dir, float vel);
+    // void shootPistol();
+    // void shootShotGun();
+
     void doScript();
 
+    static std::unordered_map<WeaponType, WeaponData> m_weapons;
+
 public:
-    float m_health = 200;
-    float m_max_health = 200;
     float m_vision_radius = 300.f;
     float m_max_speed = 300.f;
     float m_cast_time = -1.f;
+
+    float m_aim_angle = 0.;
+
 
     CombatState m_combat_state = CombatState::None;
     Enemy *target_enemy = nullptr;
 
     VisionField m_vision;
+    bool m_holding_trigger = false; 
+
+    int m_selected_ability = 3;
 
 private:
     std::unordered_set<DisabilityState> m_disabilities;
 
     VertexArray m_vision_verts;
-};
+
+    WeaponType m_selected_weapon = WeaponType::Pistol;
+
+};  
+
 class Event : public GameObject
 {
 
@@ -115,6 +167,17 @@ namespace pathfinding
     class PathFinder;
 }
 
+    enum class MotionState
+    {
+        Attacking = 0,
+        Casting = 1,
+        Chasing =2,
+        Running = 3,
+        Walking = 4,
+        Standing = 5,
+    };
+
+
 class Enemy : public GameObject
 {
 
@@ -134,6 +197,10 @@ public:
     {
         return static_cast<int>(m_state);
     }
+    int getMotionState() const
+    {
+        return static_cast<int>(m_motion_state);
+    }
     void setState(int state)
     {
         if (state >= 3)
@@ -141,6 +208,14 @@ public:
             return;
         }
         m_state = static_cast<AIState>(state);
+    }
+    void setMotionState(int state)
+    {
+        if (state >= 6)
+        {
+            return;
+        }
+        m_motion_state = static_cast<MotionState>(state);
     }
 
     const std::string &getScript() const
@@ -159,6 +234,7 @@ private:
     void doScript();
 
 public:
+
     float max_vel = 100.f;
     float max_acc = 550.f;
     float max_impulse_vel = 40.f;
@@ -169,7 +245,9 @@ public:
 
     utils::Vector2f m_next_path = {-1, -1};
     utils::Vector2f m_next_next_path = {-1, -1};
+
     AIState m_state = AIState::Patroling;
+    MotionState m_motion_state = MotionState::Walking;
 
     Color m_color = Color(20, 0, 0, 1);
 
@@ -195,8 +273,6 @@ private:
     int m_pathfinding_cd = 120;
     std::string m_script_name = "basicai.lua";
 
-
-    
     SurfaceTable m_surfaces;
     // std::array<bool, static_cast<int>(SurfaceType::Count)> m_surface_is_walkable;
 };
@@ -206,6 +282,29 @@ using uncvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 template <typename T>
 struct fail : std::false_type
 {
+};
+
+class Bullet : public GameObject
+{
+
+public:
+    using ColorTable = std::map<std::string, std::map<std::string, float>>;
+
+public:
+    Bullet() = default;
+    Bullet(TextureHolder &textures);
+    virtual ~Bullet() override {}
+
+    virtual void update(float dt) override;
+    virtual void onCreation() override;
+    virtual void onDestruction() override;
+    virtual void draw(LayersHolder &layers) override;
+    virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
+
+    // std::function<utils::Vector2f(utils::Vector2f, float)> m_intergrator = [](utils::Vector2f pos, float dt){;};
+    float m_max_speed = 1500.f;
+    float m_impulse = m_max_speed;
+    float m_dmg = 1.;
 };
 
 class Projectile : public GameObject
@@ -225,62 +324,23 @@ public:
     virtual void draw(LayersHolder &layers) override;
     virtual void onCollisionWith(GameObject &obj, CollisionData &c_data) override;
 
-    void setScriptName(const std::string &new_script_name)
-    {
-        m_script_name = new_script_name;
-        readDataFromScript();
-    }
+    void setScriptName(const std::string &new_script_name);
 
-    const std::string &getScriptName() const
-    {
-        return m_script_name;
-    }
+    const std::string &getScriptName() const;
 
-    void setMaxVel(float new_vel)
-    {
-        m_max_vel = new_vel;
-    }
+    void setMaxVel(float new_vel);
 
-    float getMaxVel() const
-    {
-        return m_max_vel;
-    }
+    float getMaxVel() const;
 
-    void setAcc(float new_acc)
-    {
-        m_acc = new_acc;
-    }
+    void setAcc(float new_acc);
 
-    float getAcc() const
-    {
-        return m_acc;
-    }
+    float getAcc() const;
 
-    void setTarget(ProjectileTarget target)
-    {
-        std::visit(
-            [this](auto &target)
-            {
-                using T = uncvref_t<decltype(target)>;
-                if constexpr (std::is_same_v<T, GameObject *>)
-                {
-                    if (target)
-                    {
-                        m_last_target_pos = target->getPosition();
-                        m_target = target;
-                    }
-                }
-                else if constexpr (std::is_same_v<T, utils::Vector2f>)
-                {
-                    m_last_target_pos = target;
-                }
-            },
-            target);
-        auto dr = m_last_target_pos - m_pos;
-        m_vel = (dr) / norm(dr) * m_max_vel;
-    }
+    void setTarget(ProjectileTarget target);
 
+public:
     int m_owner_entity_id = -1;
+    bool m_homing = false;
 
 private:
     void readDataFromScript();

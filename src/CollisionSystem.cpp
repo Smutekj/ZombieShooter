@@ -19,7 +19,7 @@ namespace Collisions
         assert(p_obj);
         auto &object = *p_obj;
         auto bounding_rect = object.getCollisionShape().getBoundingRect().inflate(1.2f);
-        m_object_type2tree[object.getType()].addRect(bounding_rect, object.getId());
+        m_object_type2tree.at(object.getType()).addRect(bounding_rect, object.getId());
 
         assert(m_objects.count(object.getId()) == 0);
         m_objects[object.getId()] = p_obj;
@@ -244,6 +244,51 @@ namespace Collisions
             }
         }
         return closest_intersection;
+    }
+    GameObject* CollisionSystem::findClosestObject(ObjectType type, utils::Vector2f at, utils::Vector2f dir, float length)
+    {
+        utils::Vector2f closest_intersection = at + dir * length;
+        float min_dist = 200.f;
+        assert(m_object_type2tree.count(type) > 0);
+        auto inters = m_object_type2tree.at(type).rayCast(at, dir, length);
+
+
+        GameObject* nearest_hit_object = nullptr;
+        for (auto ent_ind : inters)
+        {  
+            auto obj_ptr = m_objects.at(ent_ind).lock();
+            if(!obj_ptr)
+            {
+                continue;
+            }
+            auto &obj = *obj_ptr;
+            auto points = obj.getCollisionShape().getPointsInWorld();
+
+            int next = 1;
+            for (int i = 0; i < points.size(); ++i)
+            {
+                utils::Vector2f r1 = points.at(i);
+                utils::Vector2f r2 = points.at(next);
+
+                utils::Vector2f segment_intersection;
+                if (utils::segmentsIntersect(r1, r2, at, at + dir * length, segment_intersection))
+                {
+                    auto new_dist = dist(segment_intersection, at);
+                    if (new_dist < min_dist)
+                    {
+                        closest_intersection = segment_intersection;
+                        min_dist = new_dist;
+                        nearest_hit_object = obj_ptr.get();
+                    }
+                }
+                next++;
+                if (next == points.size())
+                {
+                    next = 0;
+                }
+            }
+        }
+        return nearest_hit_object;
     }
 
     CollisionData inline calcCollisionData(const std::vector<utils::Vector2f> &points1,

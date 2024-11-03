@@ -31,21 +31,21 @@ local function drawAgent(enemy, layers)
     sprite.setTexture(sprite, 0, texture);
     sprite.pos = Vec(enemy.x, enemy.y);
     sprite.scale = Vec(20., 20.);
-
-    sprite.angle = math.rad(-enemy.angle - 270);
+    sprite.color = ColorByte(0,255,0,255);
+    sprite.angle = math.rad(enemy.angle - 90.);
     layers.drawSprite(layers, "Wall", sprite, "basicagent");
 
     -- draw eyes
-    -- local left_eye_pos = Vec(enemy.x - 6., enemy.y + 8.); -- left eye
-    -- local right_eye_pos= Vec(enemy.x + 6., enemy.y + 8.);  -- right eye
-    local left_eye_pos  = rotate(Vec(8., -6.), enemy.angle) + enemy.pos;
-    local right_eye_pos = rotate(Vec( 8., 6.), enemy.angle) + enemy.pos;
-    -- sprite.angle = 0.;
-    sprite.scale = Vec(2.69, 2.69);
+    local left_eye_pos = Vec(enemy.x - 6., enemy.y + 8.); -- left eye
+    local right_eye_pos= Vec(enemy.x + 6., enemy.y + 8.);  -- right eye
+    local left_eye_pos  = rotate(Vec(8., 6.), enemy.angle) + enemy.pos;
+    local right_eye_pos = rotate(Vec(8., -6.), enemy.angle) + enemy.pos;
+    -- -- sprite.angle = 0.;
+    sprite.scale = Vec(4.5, 4.5);
     sprite.pos = left_eye_pos;
-    layers.drawSprite(layers, "Wall", sprite, "basicshield");
+    layers.drawSprite(layers, "Unit", sprite, "eye");
     sprite.pos = right_eye_pos
-    layers.drawSprite(layers, "Wall", sprite, "basicshield");
+    layers.drawSprite(layers, "Unit", sprite, "eye");
     
 
     local angle_rad = math.rad(enemy.angle);

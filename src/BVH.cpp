@@ -102,6 +102,10 @@ void BoundingVolumeTree::removeObject(int object_index)
     object2node_indices.erase(object_index);
     assert(!containsCycle());
     assert(isConsistent());
+    if(leaf_index == root_ind)
+    {
+        root_ind = -1;
+    }
     // std::cout << "max balance is: " << calcMaxDepth() << "\n";
 }
 
@@ -114,6 +118,7 @@ void BoundingVolumeTree::removeLeaf(int leaf_index)
     if (leaf_index == root_ind) //! there is just one leaf thus it is root
     {
         free_indices.insert(leaf_index);
+        // root_ind = -1;
         return;
     }
 
@@ -171,6 +176,8 @@ void BoundingVolumeTree::removeLeaf(int leaf_index)
     }
 
     refitFrom(sibling_node.parent_index);
+
+
 }
 
 //! \brief refits bounding volumes of all parent nodes nodes
@@ -613,12 +620,14 @@ std::vector<int> BoundingVolumeTree::rayCast(utils::Vector2f from, utils::Vector
 
     utils::Vector2f to = from + dir * length;
     std::vector<int> intersections;
-
+    if(root_ind == -1) //! there is nothing in the tree
+    {
+        return {};
+    }
     std::queue<int> to_visit;
     to_visit.push(root_ind);
     while (!to_visit.empty())
     {
-
         int current_ind = to_visit.front();
         to_visit.pop();
         auto &current = nodes.at(current_ind);

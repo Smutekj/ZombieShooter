@@ -12,7 +12,7 @@ uniform float u_time;
 
 uniform vec2 u_shape_vec = vec2(1.,1.);
 uniform vec3 u_color = vec3(5.,0.5,0.);
-uniform vec3 u_color_edge = vec3(0.,5.,120.);
+uniform vec3 u_color_edge = vec3(0.,2.,20.);
 
 uniform sampler2D u_texture;
 
@@ -46,7 +46,8 @@ void main()
     float shape_factor = smoothstep(0.35, 0.37, d_center) - smoothstep(0.37, 0.4, d_center);
     float left_eye = 1.0 - smoothstep(0.05, 0.075, left_eye_sdf);
     float right_eye = 1.0 - smoothstep(0.05, 0.075, right_eye_sdf);
+    float eyes_shape_factor = 0.;//left_eye + right_eye;
 
-    vec3 result = u_color_edge *shape_factor + 0.*u_color*(right_eye + left_eye);
-    FragColor = vec4(result, clamp(shape_factor + 0.*(right_eye + left_eye), 0., 1.));
+    vec3 result = u_color_edge *shape_factor * (1. - eyes_shape_factor) + 5.*v_color.rgb*(eyes_shape_factor);
+    FragColor = vec4(result, clamp(shape_factor + eyes_shape_factor, 0., 1.));
 }                                          

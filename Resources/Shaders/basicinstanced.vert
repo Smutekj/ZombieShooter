@@ -21,10 +21,11 @@ uniform mat4 u_view_projection;
 void main()                                   
 {                                     
             
-    vec2 transformed_pos = vec2(cos(a_angle)*a_position.x + sin(a_angle) * a_position.y,
-                                 -sin(a_angle)*a_position.x + cos(a_angle) * a_position.y);
+    vec2 scaled_pos = vec2(a_position.x * a_scale.x, a_position.y * a_scale.y);
+    vec2 scaled_rotated_pos = vec2(cos(a_angle)*scaled_pos.x - sin(a_angle) * scaled_pos.y,
+                                 +sin(a_angle)*scaled_pos.x + cos(a_angle) * scaled_pos.y);
 
-    gl_Position = u_view_projection*vec4(a_scale * transformed_pos + a_translation, 0., 1.0);    
+    gl_Position = u_view_projection*vec4(scaled_rotated_pos + a_translation, 0., 1.0);    
     
     //
     float id_f = float(gl_VertexID); 

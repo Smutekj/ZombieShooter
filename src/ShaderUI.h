@@ -188,6 +188,7 @@ class UI
 
 public:
     UI(Window &window, TextureHolder &textures, LayersHolder &layers,  Renderer& window_canvas);
+    ~UI();
 
     void showWindow();
     void toggleActive(UIWindowType window_id);

@@ -19,6 +19,13 @@ void GameObject::updateAll(float dt)
         m_collision_shape->setPosition(m_pos.x, m_pos.y);
         m_collision_shape->setRotation(m_angle);
     }
+    if(m_health_comp)
+    {
+        if(m_health_comp->m_health <= 0.)
+        {
+            kill();
+        }
+    }
     m_pos += m_vel * dt;
 }
 

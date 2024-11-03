@@ -47,6 +47,16 @@ void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
         assert(points.size() >= 2);
         auto &v = obj.m_vel;
         auto pos = obj.getPosition();
+
+        auto dr = pos - points.at(0); 
+        auto alpha = utils::dot(dr, points.at(1) - points.at(0)); 
+        auto l_sq = utils::norm2(points.at(1) - points.at(0));
+        if(alpha > l_sq || alpha < 0.)
+        {
+            return;
+        }
+
+
         auto norm = getNorm();
         auto n_dot_v = dot(v, norm);
         auto is_left_of_wall = utils::orient(pos, points.at(0), points.at(1)) >= 0;
@@ -54,6 +64,7 @@ void Wall::onCollisionWith(GameObject &obj, CollisionData &c_data)
         {
             if (n_dot_v >= 0 && m_constraints_motion)
             {
+                 
                 v -= n_dot_v * norm; //! remove normal compotent to the wall (How to make this work with many constraints?)
                 m_color = Color{20, 1, 0, 1};
             }

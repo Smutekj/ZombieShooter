@@ -54,12 +54,12 @@ FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
     m_smoke.setInitColor(m_smoke_color);
     m_smoke.setFinalColor(m_smoke_edge_color);
     m_smoke.setLifetime(2.f);
-    m_smoke.setUpdater([this](Particle &p)
+    m_smoke.setUpdater([this](Particle &p, float dt = 0.016f)
                        {
                                 auto t_left = p.life_time - p.time;
                                 p.acc = {0, 0};
                                 p.vel += p.time *p.acc;
-                                p.pos += p.vel * 0.016f;
+                                p.pos += p.vel * dt;
                                 p.scale += utils::Vector2f{0.5f};
                                 p.angle += randf(0, 3.); });
     m_smoke.setEmitter([](utils::Vector2f spawn_pos)
@@ -75,12 +75,12 @@ FireEffect::FireEffect(ShaderHolder &shaders, TextureHolder &textures)
     m_fire.setLifetime(1.f);
     m_fire.setInitColor(m_fire_color);
     m_fire.setFinalColor(m_fire_edge_color);
-    m_fire.setUpdater([this](Particle &p)
+    m_fire.setUpdater([this](Particle &p, float dt = 0.016f)
                       {
                                 auto t_left = p.life_time - p.time;
                                 p.acc = {0, 0};
                                 p.vel += p.time *p.acc;
-                                p.pos += p.vel * 0.016f;
+                                p.pos += p.vel * dt;
                                 p.angle += randf(0, 3.); });
     m_fire.setEmitter([](utils::Vector2f spawn_pos)
                       {
@@ -131,10 +131,10 @@ void Water::setColor(Color new_color)
 
 void Water::draw(LayersHolder &layers)
 {
-    assert(layers.hasLayer("Water"));
-    auto &water_canvas = layers.getCanvas("Water");
-    water_canvas.drawVertices(m_water_verts);
-    m_target_size = water_canvas.getTargetSize();
+    // assert(layers.hasLayer("Water"));
+    // auto &water_canvas = layers.getCanvas("Water");
+    // water_canvas.drawVertices(m_water_verts);
+    // m_target_size = water_canvas.getTargetSize();
 }
 
 void Water::readFromMap(cdt::Triangulation<cdt::Vector2i> &m_cdt, std::vector<int> &water_tri_inds)
@@ -202,7 +202,7 @@ void FloatingText::draw(LayersHolder &layers)
     auto text_color = m_colors.at("TextColor");
     Color edge_color = m_colors.at("EdgeColor");
     glm::vec4 ec(edge_color.r, edge_color.g, edge_color.b, edge_color.a);
-    auto &canvas = layers.getCanvas("Text");
+    auto &canvas = layers.getCanvas("UI");
     m_text.setColor(text_color);
     canvas.getShader("Text").getVariables().uniforms["u_edge_color"] = ec;
     canvas.drawText(m_text, "Text", DrawType::Dynamic);

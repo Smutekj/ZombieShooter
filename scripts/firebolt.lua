@@ -14,8 +14,8 @@ TailCanvas = "Wall";
 BoltCanvas = "Wall";
 
 ParticleColors = {
-    Init =  {r = 40.,g = 0.2,b = 0.,a = 1.},
-    Final =  {r = 0.,g = 1.,b = 0.,a = 1.}
+    Init =  {r = 2.,g = 0.2,b = 0.,a = 1.},
+    Final =  {r = 0.,g = 1.,b = 0.,a = 0.0}
 }
 
 BoltColor = {r = 20.,g = 0.2,b = 0.,a = 1.}
@@ -76,8 +76,8 @@ function Spawner(spawn_pos, spawn_vel)
     p.vel.y = speed*n_dir.y + spawn_vel.y*spawn_mult;
 
     p.life_time = 1.;
-    p.scale.x = p.scale.x + 5.;
-    p.scale.y = p.scale.y + 5.;
+    p.scale.x = p.scale.x + 0.5;
+    p.scale.y = p.scale.y + 0.5;
 
     return p;
 end

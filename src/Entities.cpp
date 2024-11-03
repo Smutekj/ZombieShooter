@@ -27,6 +27,9 @@ extern "C"
 #include <LuaBridge/LuaBridge.h>
 #include <LuaBridge/Map.h>
 
+#include "../external/magic_enum/magic_enum.hpp"
+#include "../external/magic_enum/magic_enum_utility.hpp"
+
 #ifndef M_PIf
 #define M_PIf std::numbers::pi_v<float>
 #endif
@@ -48,7 +51,7 @@ void drawAgent(utils::Vector2f pos, float radius, LayersHolder &layers, Color co
 {
     radius /= std::sqrt(2.f);
     auto &canvas = layers.getCanvas("Unit");
-    auto &eye_canvas = layers.getCanvas("Fire");
+    // auto &eye_canvas = layers.getCanvas("Fire");
 
     float thickness = radius / 10.f;
 
@@ -75,7 +78,72 @@ PlayerEntity::PlayerEntity(TextureHolder &textures)
       m_vision_verts(m_world->m_shaders.get("VisionLight2"))
 {
     m_collision_shape = std::make_unique<Polygon>(4);
+    m_health_comp = std::make_unique<GameObject::HitPointData>(200., 200., 1.);
     setSize({20.f, 20.f});
+}
+
+std::unordered_map<WeaponType, WeaponData> PlayerEntity::m_weapons = {{WeaponType::Pistol, Weapons::s_pistol_data},
+                                                                      {WeaponType::ShotGun, Weapons::s_shotgun_data},
+                                                                      {WeaponType::MachineGun, Weapons::s_machinegun_data}};
+
+void PlayerEntity::shootBullet(utils::Vector2f from, float angle_dir, float vel)
+{
+    auto &world = GameWorld::getWorld();
+    auto new_bullet = world.addObject<Bullet>("Bullet");
+    new_bullet->setPosition(from);
+    new_bullet->setAngle(angle_dir);
+    new_bullet->m_vel = vel * utils::angle2dir(angle_dir);
+}
+
+void PlayerEntity::switchWeaponNext()
+{
+    size_t n_weapons = magic_enum::enum_count<WeaponType>();
+    int weapon_id = magic_enum::enum_integer(m_selected_weapon);
+    int next_id = (weapon_id + 1) % n_weapons;
+    m_selected_weapon = magic_enum::enum_value<WeaponType>(next_id);
+}
+
+void PlayerEntity::switchWeaponPrev()
+{
+    size_t n_weapons = magic_enum::enum_count<WeaponType>();
+    int weapon_id = magic_enum::enum_integer(m_selected_weapon);
+    int next_id = (weapon_id - 1 + n_weapons) % n_weapons;
+    m_selected_weapon = magic_enum::enum_value<WeaponType>(next_id);
+}
+
+void PlayerEntity::shootWeapon()
+{
+    auto &weapon = m_weapons[m_selected_weapon];
+    if (weapon.m_shoot_cooldown_curr > 0.001f)
+    {
+        return;
+    }
+    weapon.m_shoot_cooldown_curr = weapon.m_shoot_cooldown;
+
+    switch (m_selected_weapon)
+    {
+    case WeaponType::Pistol:
+    {
+        shootBullet(getPosition(), m_aim_angle, 500.);
+        break;
+    }
+    case WeaponType::ShotGun:
+    {
+        int n_bullets = 20;
+        float spread_angle = 10;
+        for (int spread_ind = -n_bullets / 2; spread_ind <= n_bullets / 2; ++spread_ind)
+        {
+            float d_angle = spread_ind / (float)n_bullets * spread_angle * 2.;
+            shootBullet(getPosition(), m_aim_angle + d_angle, 1000.);
+        }
+        break;
+    }
+    case WeaponType::MachineGun:
+    {
+        shootBullet(getPosition(), m_aim_angle + randf(-1.5, 1.5), 2000.);
+        break;
+    }
+    }
 }
 
 void PlayerEntity::doScript()
@@ -104,7 +172,17 @@ void PlayerEntity::update(float dt)
         m_vel *= 0.f;
     }
 
-    truncate(m_vel, m_max_speed);
+    if (m_holding_trigger)
+    {
+        shootWeapon();
+    }
+
+    assert(m_weapons.count(m_selected_weapon));
+    auto &weapon = m_weapons.at(m_selected_weapon);
+    weapon.m_reload_time_curr > 0 ? weapon.m_reload_time_curr -= dt : weapon.m_reload_time_curr = 0.;
+    weapon.m_shoot_cooldown_curr > 0 ? weapon.m_shoot_cooldown_curr -= dt : weapon.m_shoot_cooldown_curr = 0.;
+
+    utils::truncate(m_vel, m_max_speed);
 }
 
 void PlayerEntity::onCreation()
@@ -143,22 +221,22 @@ void PlayerEntity::draw(LayersHolder &layers)
 
     // drawAgent(m_pos, m_size.x, layers, {0, 0, 25, 1});
 
-    auto &light_canvas = layers.getCanvas("Light");
-    auto &shader = light_canvas.getShader("VisionLight");
-    shader.use();
-    shader.setUniform2("u_posx", m_pos.x);
-    shader.setUniform2("u_posy", m_pos.y);
-    shader.setUniform2("u_max_radius", m_vision_radius);
-    m_vision.getDrawVertices(shader, m_vision_verts, {1, 1, 1, 1}, m_vision_radius);
-    for (int vert_ind = 0; vert_ind < m_vision_verts.size(); ++vert_ind)
-    {
-        const auto &pos = m_vision_verts[vert_ind].pos;
-        auto dr = pos - m_pos;
-        m_vision_verts[vert_ind].tex_coord = {dr};     //! we use this information in a shader
-        m_vision_verts[vert_ind].color = {1, 1, 1, 1}; //! we use this information in a shader
-    }
-    m_vision_verts.m_shader->setUniform2("u_max_radius", m_vision_radius);
-    light_canvas.drawVertices(m_vision_verts, DrawType::Dynamic);
+    // auto &light_canvas = layers.getCanvas("Light");
+    // auto &shader = light_canvas.getShader("VisionLight");
+    // shader.use();
+    // shader.setUniform2("u_posx", m_pos.x);
+    // shader.setUniform2("u_posy", m_pos.y);
+    // shader.setUniform2("u_max_radius", m_vision_radius);
+    // m_vision.getDrawVertices(shader, m_vision_verts, {1, 1, 1, 1}, m_vision_radius);
+    // for (int vert_ind = 0; vert_ind < m_vision_verts.size(); ++vert_ind)
+    // {
+    //     const auto &pos = m_vision_verts[vert_ind].pos;
+    //     auto dr = pos - m_pos;
+    //     m_vision_verts[vert_ind].tex_coord = {dr};     //! we use this information in a shader
+    //     m_vision_verts[vert_ind].color = {1, 1, 1, 1}; //! we use this information in a shader
+    // }
+    // m_vision_verts.m_shader->setUniform2("u_max_radius", m_vision_radius);
+    // light_canvas.drawVertices(m_vision_verts, DrawType::Dynamic);
 
     // light_canvas.drawCricleBatched(m_pos + m_vel*2.f, 50.f, Color{100,0,1,1.0});
 }
@@ -268,6 +346,65 @@ void Event::onDestruction()
 {
 }
 void Event::draw(LayersHolder &layers)
+{
+}
+
+Bullet::Bullet(TextureHolder &textures)
+    : GameObject(&GameWorld::getWorld(), textures, ObjectType::Bullet2)
+{
+    m_collision_shape = std::make_unique<Polygon>(4);
+    m_collision_shape->setScale(0.1, 0.1);
+}
+
+void Bullet::update(float dt)
+{
+    auto speed = utils::norm(m_vel);
+    if (!utils::approx_equal_zero(speed)) //! to avoid division by zero
+    {
+        auto collider = GameWorld::getWorld().getCollider();
+        auto hit_wall = collider.findClosestObject(ObjectType::Wall, m_pos, m_vel / speed, 10 * speed * dt);
+        auto hit_enemy = collider.findClosestObject(ObjectType::Enemy, m_pos, m_vel / speed, 10 * speed * dt);
+        if (hit_wall && !hit_enemy)
+        {
+            kill();
+            return;
+        }
+        // if(hit_wall && hit_enemy)
+        // {
+        //     auto dist_to_enemy = utils::norm2(hit_enemy->getPosition() - getPosition());
+        //     auto dist_to_wall = utils::norm2(hit_enemy->getPosition() - getPosition());
+        // }
+
+        if (hit_enemy)
+        {
+            // auto dr = getPosition() -
+            kill();
+            auto &enemy = static_cast<Enemy &>(*hit_enemy);
+            enemy.setHp(enemy.getHp()  - m_dmg);
+            enemy.m_impulse += m_vel / speed * m_impulse;
+        }
+    }
+    utils::truncate(m_vel, m_max_speed);
+    m_pos += m_vel * dt;
+}
+void Bullet::onCreation()
+{
+}
+void Bullet::onDestruction()
+{
+}
+void Bullet::draw(LayersHolder &layers)
+{
+
+    auto &canvas = layers.getCanvas("Unit");
+
+    Sprite bullet(*(m_textures->get("bomb")));
+    bullet.setPosition(m_pos);
+    bullet.setRotation(glm::radians(utils::dir2angle(m_vel)));
+    bullet.setScale(utils::norm(m_vel * 0.056f), 1.0);
+    canvas.drawSprite(bullet, "bullet");
+}
+void Bullet::onCollisionWith(GameObject &obj, CollisionData &c_data)
 {
 }
 
@@ -415,25 +552,28 @@ void Projectile::readDataFromScript()
     if (updater.isFunction())
     {
         m_bolt_particles.setUpdater(
-            [this, updater](Particle &p)
+            [this, updater](Particle &p, float dt)
             {
-                try
-                {
-                    p = updater(p);
-                }
-                catch (std::exception &e)
-                {
-                    std::cout << "ERROR IN Spawner" << e.what() << " !";
-                }
+                p.pos += p.vel * dt;
+                p.scale += utils::Vector2f{0.05};
+                return p;
+                // try
+                // {
+                //     p = updater(p);
+                // }
+                // catch (std::exception &e)
+                // {
+                //     std::cout << "ERROR IN Spawner" << e.what() << " !";
+                // }
             });
     }
     // else
     {
         m_bolt_particles.setUpdater(
-            [](Particle &p)
+            [](Particle &p, float dt = 0.016f)
             {
                 p.scale += utils::Vector2f{0.05f, 0.05f};
-                p.pos += p.vel * 0.016f;
+                p.pos += p.vel * dt;
             });
     }
 
@@ -451,7 +591,7 @@ Projectile::Projectile(GameWorld *world, TextureHolder &textures, const std::str
     readDataFromScript();
     setTarget(utils::Vector2f{0, 0});
     m_collision_shape = std::make_unique<Polygon>(8);
-    setSize({5.f, 5.f});
+    setSize({1.f, 1.f});
 }
 
 void Projectile::onCollisionWith(GameObject &obj, CollisionData &c_data)
@@ -470,15 +610,9 @@ void Projectile::onCreation()
 {
 }
 
-std::shared_ptr<Font> m_font = nullptr;
-
 void Projectile::onDestruction() {}
 void Projectile::draw(LayersHolder &layers)
 {
-    if (!m_font)
-    {
-        m_font = std::make_shared<Font>("arial.ttf");
-    }
 
     auto p_tail_canvas = layers.getCanvasP(m_tail_canvas_name);
     auto p_bolt_canvas = layers.getCanvasP(m_bolt_canvas_name);
@@ -509,6 +643,61 @@ void Projectile::draw(LayersHolder &layers)
     }
 }
 
+void Projectile::setScriptName(const std::string &new_script_name)
+{
+    m_script_name = new_script_name;
+    readDataFromScript();
+}
+
+const std::string &Projectile::getScriptName() const
+{
+    return m_script_name;
+}
+
+void Projectile::setMaxVel(float new_vel)
+{
+    m_max_vel = new_vel;
+}
+
+float Projectile::getMaxVel() const
+{
+    return m_max_vel;
+}
+
+void Projectile::setAcc(float new_acc)
+{
+    m_acc = new_acc;
+}
+
+float Projectile::getAcc() const
+{
+    return m_acc;
+}
+
+void Projectile::setTarget(ProjectileTarget target)
+{
+    std::visit(
+        [this](auto &target)
+        {
+            using T = uncvref_t<decltype(target)>;
+            if constexpr (std::is_same_v<T, GameObject *>)
+            {
+                if (target)
+                {
+                    m_last_target_pos = target->getPosition();
+                    m_target = target;
+                }
+            }
+            else if constexpr (std::is_same_v<T, utils::Vector2f>)
+            {
+                m_last_target_pos = target;
+            }
+        },
+        target);
+    auto dr = m_last_target_pos - m_pos;
+    m_vel = (dr) / norm(dr) * m_max_vel;
+}
+
 void Projectile::update(float dt)
 {
     if (m_target)
@@ -528,7 +717,10 @@ void Projectile::update(float dt)
     }
     auto dr = m_last_target_pos - m_pos;
     auto dv = (dr / norm(dr) - m_vel / norm(m_vel));
-    m_vel += dv * m_acc;
+    if (m_homing)
+    {
+        m_vel += dv * m_acc;
+    }
     m_vel *= m_max_vel / norm(m_vel);
     setPosition(m_pos);
 
@@ -545,6 +737,9 @@ Enemy::Enemy(pathfinding::PathFinder &pf, TextureHolder &textures,
 {
     m_collision_shape = std::make_unique<Polygon>(4);
     setSize({10.f, 10.f});
+    
+    m_health_comp = std::make_unique<GameObject::HitPointData>(5., 5., 0.);
+    
     m_surfaces.toggleWalkable(SurfaceType::Ground);
 
     m_pathfinding_cd = (rand() % 15) + 60; //! randomize patfinding cd so that they do not do pathfind at the same frame
@@ -592,7 +787,7 @@ void Enemy::doScript()
             }
             catch (std::exception &e)
             {
-                std::cout << "ERROR IN updateAI" << e.what() << " !\n";
+                // std::cout << "ERROR IN updateAI" << e.what() << " !\n";
             }
         };
     }
@@ -638,20 +833,35 @@ void Enemy::update(float dt)
 
     boidSteering();
 
-    truncate(m_acc, max_acc);
+    utils::truncate(m_acc, max_acc);
     m_vel += m_acc * dt;
     if (norm2(m_vel) > 0.000001)
     {
         m_angle = dir2angle(m_vel);
     }
 
-    truncate(m_vel, max_vel);
+    utils::truncate(m_vel, max_vel);
+    if (m_motion_state == MotionState::Attacking)
+    {
+        float speed_alpha = utils::norm(m_vel) / max_vel;
+        float k_factor = 0.1 * speed_alpha + 0.001 * (1. - speed_alpha);
+        m_vel -= k_factor * m_vel;
+    }else if(m_motion_state == MotionState::Walking)
+    {
+        utils::truncate(m_vel, max_vel / 2.);
+    }
+    else if(m_motion_state == MotionState::Casting)
+    {
+        utils::truncate(m_vel, max_vel / 3.);
+    }
+
+    utils::truncate(m_impulse, 100);
     m_pos += (m_impulse)*dt;
     if (m_health < 0.f)
     {
         kill();
     }
-    m_impulse *= 0.f;
+    m_impulse -= m_impulse * 0.08;
     m_acc *= 0.f;
 }
 
@@ -722,7 +932,6 @@ void Enemy::onCollisionWith(GameObject &obj, CollisionData &c_data)
                 m_color = Color{20, 1, 0, 1};
             }
         }
-
         try
         {
             auto collider = luabridge::getGlobal(lua->m_lua_state, "EnemyWallCollision");
@@ -780,10 +989,10 @@ void Enemy::draw(LayersHolder &layers)
         std::cout << "ERROR IN EnemyDraw: " << e.what() << "\n";
     }
 
-    auto &canvas = layers.getCanvas("UI");
-    canvas.drawLineBatched(m_pos, m_target_pos, 2., {1, 0, 0, 1});
-    canvas.drawLineBatched(m_pos, m_next_path, 2., {1, 1, 0, 1});
-    canvas.drawLineBatched(m_next_path, m_next_next_path, 2., {0, 1, 0, 1});
+    // auto &canvas = layers.getCanvas("UI");
+    // canvas.drawLineBatched(m_pos, m_target_pos, 2., {1, 0, 0, 1});
+    // canvas.drawLineBatched(m_pos, m_next_path, 2., {1, 1, 0, 1});
+    // canvas.drawLineBatched(m_next_path, m_next_next_path, 2., {0, 1, 0, 1});
 }
 
 void Enemy::avoidMeteors()
@@ -906,7 +1115,7 @@ void Enemy::boidSteering()
     }
 
     m_acc += (scatter_force + align_force + seek_force + cohesion_force);
-    truncate(m_acc, max_acc);
+    utils::truncate(m_acc, max_acc);
 }
 
 OrbitingShield::OrbitingShield(GameWorld *world, TextureHolder &textures)
@@ -1063,7 +1272,7 @@ void OrbitingShield::readDataFromScript()
     if (updater.isFunction())
     {
         m_particles->setUpdater(
-            [this, updater](Particle &p)
+            [this, updater](Particle &p, float dt = 0.016f)
             {
                 try
                 {
@@ -1078,7 +1287,7 @@ void OrbitingShield::readDataFromScript()
     else
     {
         m_particles->setUpdater(
-            [](Particle &p)
+            [](Particle &p, float dt)
             {
                 p.pos += p.vel;
             });

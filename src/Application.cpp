@@ -155,34 +155,28 @@ void Application::initializeLayers()
     text_options.format = TextureFormat::RGBA;
     text_options.internal_format = TextureFormat::RGBA;
 
-    auto &text_layer = m_layers.addLayer("Text", 100, text_options);
-    text_layer.m_canvas.addShader("Text", "basicinstanced.vert", "textBorder.frag");
+    // auto &text_layer = m_layers.addLayer("Text", 100, text_options);
+    // text_layer.m_canvas.addShader("Text", "basicinstanced.vert", "textBorder.frag");
 
     auto &unit_layer = m_layers.addLayer("Unit", 3, options);
     // unit_layer.addEffect(std::make_unique<Bloom2>(width, height));
     unit_layer.m_canvas.addShader("Shiny", "basicinstanced.vert", "shiny.frag");
     unit_layer.m_canvas.addShader("lightning", "basicinstanced.vert", "lightning.frag");
-
-    auto &smoke_layer = m_layers.addLayer("Smoke", 4, options);
-    // smoke_layer.addEffect(std::make_unique<BloomSmoke>(width, height));
-
-    auto &fire_layer = m_layers.addLayer("Fire", 6, options);
-    fire_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
+    
+    // auto &fire_layer = m_layers.addLayer("Fire", 6, options);
+    // fire_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
 
     auto &wall_layer = m_layers.addLayer("Wall", 5000, options);
-    wall_layer.addEffect(std::make_unique<Bloom3>(width, height, options));
+    // wall_layer.addEffect(std::make_unique<Bloom2>(width, height, options));
 
-    auto &light_layer = m_layers.addLayer("Light", 150, options);
-    light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
-    light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
-    light_layer.addEffect(std::make_unique<LightCombine>(width, height));
-    light_layer.m_canvas.addShader("VisionLight", "basictex.vert", "fullpassLight.frag");
-    light_layer.m_canvas.addShader("combineBloomBetter", "basicinstanced.vert", "combineBloomBetter.frag");
+    // auto &light_layer = m_layers.addLayer("Light", 10000, options);
+    // light_layer.m_canvas.m_blend_factors = {BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha};
+    // light_layer.addEffect(std::make_unique<SmoothLight>(width, height));
+    // light_layer.addEffect(std::make_unique<LightCombine>(width, height));
+    // light_layer.m_canvas.addShader("VisionLight", "basictex.vert", "fullpassLight.frag");
+    // light_layer.m_canvas.addShader("combineBloomBetter", "basicinstanced.vert", "combineBloomBetter.frag");
 
-    auto &water_layer = m_layers.addLayer("Water", 0, options);
-
-    auto &ui_layer = m_layers.addLayer("UI", 1000, text_options);
-    // water_layer.addEffect(std::make_unique<WaterEffect>(width, height));
+    auto &ui_layer = m_layers.addLayer("UI", 6000, options);
     //
 }
 
@@ -201,19 +195,21 @@ Application::Application(int width, int height) : m_window(width, height),
     m_map = std::make_unique<MapGridDiagonal>(utils::Vector2i{MAP_SIZE_X, MAP_SIZE_Y},
                                               utils::Vector2i{MAP_GRID_CELLS_X, MAP_GRID_CELLS_Y});
     auto &world = GameWorld::getWorld();
-    for (int i = 0; i < 69; ++i)
+    for (int i = 0; i < 37; ++i)
     {
-        auto rand_pos = randomPosInBox({20, 20}, {0.9 * MAP_SIZE_X, 0.9 * MAP_SIZE_Y});
+        auto rand_pos = randomPosInBox({MAP_SIZE_X/MAP_GRID_CELLS_X, MAP_SIZE_X/MAP_GRID_CELLS_Y}, {0.8 * MAP_SIZE_X, 0.8 * MAP_SIZE_Y});
         auto map_cell = m_map->coordToCell(rand_pos);
-        int rx = 2 + rand() % 4;
-        int ry = 2 + rand() % 4;
+        int rx = 4 + rand() % 4;
+        int ry = 4 + rand() % 4;
         m_map->changeTiles(MapGridDiagonal::Tile::Wall, {m_map->cellCoordX(map_cell), m_map->cellCoordY(map_cell)}, {rx, ry});
     }
 
     p_player = world.addObject<PlayerEntity>("Player");
     p_player->setPosition({500, 500});
     p_player->setAngle(90);
-    world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player"));
+    world.addObject(ObjectType::Orbiter, "Shield", world.getIdOf("Player#0"));
+    
+    LuaWrapper::getSingleton()->doFile("test.lua");
 
     updateTriangulation(world.getTriangulation(), *m_map, m_surfaces);
 
@@ -249,11 +245,6 @@ Application::Application(int width, int height) : m_window(width, height),
     m_window_renderer.m_view.setSize(m_window.getSize());
     m_window_renderer.m_view.setCenter(m_window.getSize() / 2);
 
-    // m_layers.activate("Light");
-    // m_layers.activate("Smoke");
-    // m_layers.activate("Fire");
-    // m_layers.activate("Unit");
-    // m_layers.activate("UI");
     m_ui = std::make_unique<UI>(m_window, m_textures, m_layers, m_window_renderer);
 }
 
@@ -261,11 +252,13 @@ void Application::run()
 {
 
 #ifdef __EMSCRIPTEN__
-    int fps = 0; // Use browser's requestAnimationFrame
+    int fps = 60; // Use browser's requestAnimationFrame
     emscripten_set_main_loop_arg(gameLoop, (void *)this, fps, true);
 #else
     while (!m_window.shouldClose())
+    {
         gameLoop((void *)this);
+    }
 #endif
 }
 
@@ -312,8 +305,7 @@ void Application::handleInput()
 void Application::onKeyPress(SDL_Keycode key)
 {
     auto mouse_pos = m_window_renderer.getMouseInWorld();
-    std::cout << "KEY PRESSED  !!!\n";
-    
+
     switch (key)
     {
     case SDLK_a:
@@ -367,19 +359,24 @@ void Application::onMouseButtonPress(SDL_MouseButtonEvent event)
         m_old_view_center = m_window_renderer.m_view.getCenter();
         m_mouse_click_position = m_window_renderer.getMouseInWorld();
     }
+    // else if (event.button == SDL_BUTTON_LEFT)
+    // {
+    //     if (!m_is_selecting)
+    //     {
+    //         m_selection_click_pos = m_window_renderer.getMouseInWorld();
+    //         m_is_selecting = true;
+    //     }
+    // }
     else if (event.button == SDL_BUTTON_LEFT)
-    {
-        if (!m_is_selecting)
-        {
-            m_selection_click_pos = m_window_renderer.getMouseInWorld();
-            m_is_selecting = true;
-        }
-    }
-    else if (event.button == SDL_BUTTON_RIGHT)
     {
         m_old_player_dir = m_window_renderer.getMouseInWorld() - p_player->getPosition();
         m_old_angle = p_player->getAngle();
         m_is_turning = true;
+    }
+
+    if (event.button == SDL_BUTTON_RIGHT)
+    {
+        p_player->m_holding_trigger = true;
     }
 }
 void Application::onWindowResize(SDL_WindowEvent event)
@@ -407,27 +404,26 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
     auto mouse_pos = m_window_renderer.getMouseInWorld();
     if (event.button == SDL_BUTTON_MIDDLE)
     {
-        auto mouse_pos2 = m_window_renderer.getMouseInWorld();
         m_wheel_is_held = false;
     }
+    // else if (event.button == SDL_BUTTON_LEFT)
+    // {
+    //     m_is_selecting = false;
+    //     if (m_is_selecting_wall)
+    //     {
+    //         auto selected_walls = selectWalls(m_selection_click_pos, mouse_pos);
+    //         for (auto wall : selected_walls)
+    //         {
+    //             wall->m_constraints_motion = !wall->m_constraints_motion;
+    //             p_player->m_vision.toggleVisibility(wall->m_cdt_edge.tri_ind, wall->m_cdt_edge.ind_in_tri);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         selectInWorld(m_selection_click_pos, mouse_pos);
+    //     }
+    // }
     else if (event.button == SDL_BUTTON_LEFT)
-    {
-        m_is_selecting = false;
-        if (m_is_selecting_wall)
-        {
-            auto selected_walls = selectWalls(m_selection_click_pos, mouse_pos);
-            for (auto wall : selected_walls)
-            {
-                wall->m_constraints_motion = !wall->m_constraints_motion;
-                p_player->m_vision.toggleVisibility(wall->m_cdt_edge.tri_ind, wall->m_cdt_edge.ind_in_tri);
-            }
-        }
-        else
-        {
-            selectInWorld(m_selection_click_pos, mouse_pos);
-        }
-    }
-    else if (event.button == SDL_BUTTON_RIGHT)
     {
         m_is_turning = false;
     }
@@ -454,20 +450,25 @@ void Application::onMouseButtonRelease(SDL_MouseButtonEvent event)
         }
     }
 
-    auto lua = LuaWrapper::getSingleton();
-    auto script_status = LuaWrapper::loadScript("UI/onAction.lua");
-    if (script_status != LuaScriptStatus::Broken)
+    if (event.button == SDL_BUTTON_RIGHT)
     {
-        try
-        {
-            auto ability = luabridge::getGlobal(lua->m_lua_state, "DoAbility");
-            ability(mouse_pos, utils::Vector2f{0, 0});
-        }
-        catch (std::exception &e)
-        {
-            std::cout << "... " << e.what() << "\n";
-        }
+        p_player->m_holding_trigger = false;
     }
+
+    // auto lua = LuaWrapper::getSingleton();
+    // auto script_status = LuaWrapper::loadScript("UI/onAction.lua");
+    // if (script_status != LuaScriptStatus::Broken)
+    // {
+    //     try
+    //     {
+    //         auto ability = luabridge::getGlobal(lua->m_lua_state, "DoAbility");
+    //         ability(mouse_pos, utils::Vector2f{0, 0});
+    //     }
+    //     catch (std::exception &e)
+    //     {
+    //         std::cout << "... " << e.what() << "\n";
+    //     }
+    // }
 }
 
 void Application::onKeyRelease(SDL_Keycode key)
@@ -505,6 +506,12 @@ void Application::onKeyRelease(SDL_Keycode key)
         break;
     case SDLK_ESCAPE:
         m_window.close();
+        break;
+    case SDLK_TAB:
+        p_player->switchWeaponNext();
+        break;
+    case SDLK_BACKSPACE:
+        p_player->switchWeaponPrev();
         break;
     }
 }
@@ -572,7 +579,7 @@ void Application::moveView(utils::Vector2f dr, Renderer &target)
     auto new_view_center = old_view_center - (dr);
     view.setCenter(new_view_center.x, new_view_center.y);
 
-    auto player = GameWorld::getWorld().get<PlayerEntity>("Player");
+    auto player = GameWorld::getWorld().get<PlayerEntity>("Player#0");
     if (!player)
     {
         return;
@@ -634,10 +641,10 @@ void Application::update(float dt = 0.016f)
     auto p_player = world.get<PlayerEntity>("Player#0");
     if (p_player)
     {
-
+        auto mouse_pos = m_window_renderer.getMouseInWorld();
+        p_player->m_aim_angle = utils::dir2angle(mouse_pos - p_player->getPosition());
         auto dir = utils::angle2dir(p_player->getAngle());
         auto vel = p_player->getMaxSpeed() * dir;
-        // p_player->m_vel = p_player->getMaxSpeed() * ((int)m_is_moving_right - (int)m_is_moving_left);
         p_player->m_vel = vel * ((int)m_is_moving_up - (int)m_is_moving_down);
         if (m_is_moving_left || m_is_moving_right)
         {
@@ -646,11 +653,11 @@ void Application::update(float dt = 0.016f)
         }
         if (m_is_turning_right)
         {
-            p_player->setAngle(p_player->getAngle() - 5);
+            p_player->setAngle(p_player->getAngle() - 360. * dt);
         }
         if (m_is_turning_left)
         {
-            p_player->setAngle(p_player->getAngle() + 5);
+            p_player->setAngle(p_player->getAngle() + 360. * dt);
         }
         int a = m_is_moving_down + m_is_moving_left + m_is_moving_up + m_is_moving_right;
         if (a >= 2)
@@ -659,7 +666,7 @@ void Application::update(float dt = 0.016f)
         }
         if (m_is_sprinting)
         {
-            p_player->m_vel *= 3.f;
+            p_player->m_vel *= 2.f;
         }
         if (m_is_turning)
         {
@@ -687,24 +694,23 @@ void Application::update(float dt = 0.016f)
     //! set time in shaders
     Shader::m_time = m_time;
 
-    auto &unit_canvas = m_layers.getCanvas("Unit");
-    auto &wall_canvas = m_layers.getCanvas("Wall");
-
-    auto mouse_coords = m_window_renderer.getMouseInWorld();
-    auto wall_color = m_ui->getBackgroundColor();
-    // drawTriangles(world.getTriangulation(), wall_canvas, wall_color);
-
     //! draw world
     m_layers.clearAllLayers();
     world.draw(m_layers);
 
+    auto &unit_canvas = m_layers.getCanvas("Unit");
+    auto mouse_coords = m_window_renderer.getMouseInWorld();
+    auto wall_color = m_ui->getBackgroundColor();
+    drawTriangles(world.getTriangulation(), unit_canvas, wall_color);
+
+
     //! clear and draw into scene
-    m_scene_canvas.clear({0, 0, 0, 0});
+    m_scene_canvas.clear({1, 0, 0, 0});
     //! draw background
     utils::Vector2f map_size = {m_map->m_cell_count.x * m_map->m_cell_size.x,
                                 m_map->m_cell_count.y * m_map->m_cell_size.y};
     auto old_view = m_scene_canvas.m_view;
-    if (auto text = m_textures.get("grass"))
+    // if (auto text = m_textures.get("grass"))
     {
         Sprite background(*m_textures.get("grass"));
         background.m_color = ColorByte{255, 255, 255, 0};
@@ -787,30 +793,31 @@ void Application::drawUI(float dt)
     m_ui->draw(m_window);
 }
 
+clock_t tic = clock();
+
 void inline gameLoop(void *mainLoopArg)
 {
 #ifdef __EMSCRIPTEN__
     // emscripten_trace_record_frame_start();
 #endif
-    auto tic = clock();
     // auto tic = std::chrono::high_resolution_clock::now();
     Application *p_app = (Application *)mainLoopArg;
 
-    p_app->update(0.02666666); //! big fucking kek
+    double dt = (double)(clock() - tic) / CLOCKS_PER_SEC;
+    tic = clock();
     p_app->handleInput();
+    p_app->update(dt); //!
 
     // Swap front/back framebuffers
     SDL_GL_SwapWindow(p_app->m_window.getHandle());
-    auto toc = clock();
     // auto toc =  std::chrono::high_resolution_clock::now();
 
     // std::cout << "frame took: " << std::chrono::duration_cast<std::chrono::microseconds>(toc - tic) << "\n";
-    double dt = (double)(toc - tic) / CLOCKS_PER_SEC * 1000.f;
-    p_app->m_avg_frame_time.addNumber(dt);
-    if (dt < 16.6666)
-    {
-        SDL_Delay(16.6666 - dt);
-    }
+    p_app->m_avg_frame_time.addNumber(dt * 1000.);
+    // if (dt < 16.6666)
+    // {
+    //     SDL_Delay(16.6666 - dt);
+    // }
 
 #ifdef __EMSCRIPTEN__
     // emscripten_trace_record_frame_end();

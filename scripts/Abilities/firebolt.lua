@@ -12,17 +12,20 @@ FireBoltAbility.onUse = function (performer, target)
         return;
     end
 
-        
+    performer.motion_state = MotionState.CASTING;  
+
     local p = createProjectile("Bullet", "FireBolt" .. tostring(performer.id));
     p.x = performer.x;
     p.y = performer.y;
     p.owner = performer.id;
     p.vel.x = target.x - performer.x;
     p.vel.y = target.y - performer.y;
-    p.scale = Vec(25, 25);
+    p.scale = Vec(10, 10);
     -- setScale("Firebolt" .. tostring(performer.id), Vec(20., 20.));
     -- setScale("Bullet", 100., 100.);
-    p.target = target
+    p.target = target;
+    -- p.target_pos.x= target.x;
+    -- p.target_pos.y= target.y;
     performer.vel.x = 0;
     performer.vel.y = 0;
     p.setScript(p, "firebolt.lua");

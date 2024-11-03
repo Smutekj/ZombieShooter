@@ -1,7 +1,6 @@
 #include "LuaWrapper.h"
 #include "GameWorld.h"
 #include "Wall.h"
-#include "AILuaComponent.h"
 #include "Entities.h"
 #include "Enviroment.h"
 #include "Particles.h"
@@ -718,7 +717,7 @@ void LuaWrapper::initializeLuaFunctions()
         .endClass()
         .deriveClass<Sprite, RectangleSimple>("Sprite")
         .addConstructor<void (*)()>()
-        .addProperty("color", &Sprite::m_color)
+        .addProperty("color", &Sprite::getColor, &Sprite::setColor)
         .addFunction("setTexture", &Sprite::setTextureP)
         .endClass()
         .deriveClass<Text, Transform>("Text")
@@ -762,13 +761,14 @@ void LuaWrapper::initializeLuaFunctions()
         .addProperty("type", &GameObject::getType)
         .addProperty("vel", &GameObject::m_vel)
         .addProperty("is_dead", &GameObject::isDead)
+        .addProperty("health", &GameObject::getHp, &GameObject::setHp)
+        .addProperty("max_health",  &GameObject::getMaxHp, &GameObject::setMaxHp)
         .addFunction("kill", &GameObject::kill)
         .endClass()
         .deriveClass<Enemy, GameObject>("Enemy")
         .addProperty("state", &Enemy::getState, &Enemy::setState)
+        .addProperty("motion_state", &Enemy::getMotionState, &Enemy::setMotionState)
         .addProperty("script", &Enemy::getScript, &Enemy::setScript)
-        .addProperty("max_health", &Enemy::m_max_health)
-        .addProperty("health", &Enemy::m_health)
         .addProperty("max_vel", &Enemy::max_vel)
         .addProperty("max_acc", &Enemy::max_acc)
         .endClass()
@@ -781,8 +781,6 @@ void LuaWrapper::initializeLuaFunctions()
         .deriveClass<PlayerEntity, GameObject>("Player")
         .addProperty("max_vel", &PlayerEntity::m_max_speed)
         .addProperty("vision_radius", &PlayerEntity::m_vision_radius)
-        .addProperty("health", &PlayerEntity::m_health)
-        .addProperty("max_health", &PlayerEntity::m_max_health)
         .addProperty("target_enemy", &PlayerEntity::target_enemy)
         .endClass()
         .deriveClass<Event, GameObject>("Event")

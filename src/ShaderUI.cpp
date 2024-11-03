@@ -58,6 +58,14 @@ UI::UI(Window &window, TextureHolder &textures,
     m_window_data[UIWindowType::Scene].is_active = false;
 }
 
+UI::~UI()
+{
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+}
+
 std::vector<std::string> extractFragmentShaderNames(const std::filesystem::path shader_dir = "")
 {
     std::vector<std::string> shader_names;
@@ -91,8 +99,6 @@ SceneGraphWindow::SceneGraphWindow()
     m_entered_name.reserve(200);
 }
 
-
-
 void SceneGraphWindow::drawSceneGraph()
 {
     auto &scene = GameWorld::getWorld().m_scene;
@@ -100,14 +106,14 @@ void SceneGraphWindow::drawSceneGraph()
     {
         std::queue<int> to_visit;
         to_visit.push(root_id);
-        while (!to_visit.empty()) 
+        while (!to_visit.empty())
         {
             auto current_id = to_visit.front();
             auto &current = scene.m_nodes.at(current_id);
             to_visit.pop();
             assert(current.p_object);
             auto node_name = GameWorld::getWorld().getName(current.p_object->getId());
-            if(!std::regex_match(node_name, std::regex{m_filter}))
+            if (!std::regex_match(node_name, std::regex{m_filter}))
             {
                 continue;
             }
@@ -135,20 +141,17 @@ void SceneGraphWindow::drawSceneGraph()
             }
         }
     }
-
 }
 
 void SceneGraphWindow::draw()
 {
     ImGui::Begin("Scene");
 
-    if(ImGui::InputText("filter: ", m_filter.data(), 200))
+    if (ImGui::InputText("filter: ", m_filter.data(), 200))
     {
-
     }
     // drawSceneGraph();
     ImGui::End();
-
 }
 void LuaWindow::draw()
 {
@@ -399,14 +402,13 @@ void UI::draw(Window &window)
     // bool show_demo_window = true;
     // if (show_demo_window)
     //     ImGui::ShowDemoWindow(&show_demo_window);
-    
+
     // ImGui::Begin("Control Panel"); // Create a window called "Hello, world!" and append into it.
     // for (auto &[type, data] : m_window_data)
     // {
     //     if (ImGui::Button(data.name.c_str()))
     //         data.is_active = !data.is_active;
     // }
-
 
     ImGui::Begin("Layers");
     if (m_layers.hasLayer(m_selected_layer))

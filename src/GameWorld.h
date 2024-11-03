@@ -200,7 +200,7 @@ public:
         return *m_pathfinder;
     }
 
-    const Collisions::CollisionSystem& getCollider() const
+    Collisions::CollisionSystem& getCollider()
     {
         return m_collision_system;
     }

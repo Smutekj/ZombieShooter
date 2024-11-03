@@ -29,5 +29,7 @@ local f, error = loadfile( "../scripts/Abilities/frostbolt.lua")
 if f then f() else print(error) end
 local f, error = loadfile( "../scripts/Abilities/consecration.lua")
 if f then f() else print(error) end
+local f, error = loadfile( "../scripts/Abilities/melee.lua")
+if f then f() else print(error) end
 
 return 0;

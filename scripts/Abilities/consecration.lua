@@ -1,4 +1,4 @@
-ConsecrationAbility = { spell_id = 3, cooldown = 25, cast_time = 1.,timer = 0, name = "consecration"}
+ConsecrationAbility = { spell_id = 5, cooldown = 25, cast_time = 1.,timer = 0, name = "consecration"}
 
 ConsecrationAbility.onUse = function (performer, target)
 
